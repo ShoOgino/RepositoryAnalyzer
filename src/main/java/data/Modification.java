@@ -1,5 +1,6 @@
 package data;
 
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -13,6 +14,7 @@ public class Modification {
 	public String pathOld;
 	public String sourceNew;
 	public String sourceOld;
+	public Changes changes;
 	public Set<String> parents;
 	public Set<String> children;
 
@@ -25,7 +27,17 @@ public class Modification {
 		this.pathNew= "";
 		this.sourceOld= "";
 		this.sourceNew= "";
+		this.changes = new Changes();
 		this.parents = new HashSet<>();
 		this.children = new HashSet<>();
 	}
+
+	public int calcNOAddedLines(){
+		return changes.calcNOAddedLines();
+	}
+
+	public int calcNODeletedLines(){
+		return changes.calcNODeletedLines();
+	}
+
 }

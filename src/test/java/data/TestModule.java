@@ -1,10 +1,5 @@
 package data;
 
-import data.Bugs;
-import data.Commits;
-import data.Modules;
-import data.Module;
-
 import org.eclipse.jgit.api.errors.GitAPIException;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -14,9 +9,9 @@ import java.io.IOException;
 import static org.junit.jupiter.api.Assertions.*;
 
 public class TestModule {
-    public static String   pathProject   = "C:/Users/ShoOgino/data/1_task/20200421_094917/projects/MLTool/datasets/egit";
+    public static String   pathProject   = "C:\\Users\\ShoOgino\\data\\workspace\\MLTool\\datasets\\egit";
     public static String   idCommitHead = "b459d7381ea57e435bd9b71eb37a4cb4160e252b";
-    public static String[] commitEdgesMethod = {"2c1b0f4ad24fb082e5eb355e912519c21a5e3f41", "1241472396d11fe0e7b31c6faf82d04d39f965a6"};
+    public static String[] commitEdgesMethod = {"2c1b0f4ad24fb082e5eb355e912519c21a5e3f41", "1241472396d11fe0e7b31c6faf82d04d39f965a6", "2774041935d41453e5080f0e3cbeef136a05597d"};
     public static String[] commitEdgesFile =  {"dfbdc456d8645fc0c310b5e15cf8d25d8ff7f84b","0cc8d32aff8ce91f71d2cdac8f3e362aff747ae7"};
 
     public static String pathRepositoryMethod = pathProject+"/repositoryMethod";
@@ -34,8 +29,9 @@ public class TestModule {
     static public void setUp() throws GitAPIException, IOException {
         util.RepositoryUtil.checkoutRepository(pathRepositoryFile, commitEdgesFile[1]);
         util.RepositoryUtil.checkoutRepository(pathRepositoryMethod, commitEdgesMethod[1]);
-        commitsAll.loadCommits(pathRepositoryMethod, idCommitHead);
+        commitsAll.loadCommitsFromRepository(pathRepositoryMethod, idCommitHead);
         modulesAll.analyzeModules(commitsAll);
+        bugsAll.loadBugs(pathBugs);
     }
 
     @Test
@@ -281,35 +277,152 @@ public class TestModule {
     public void testCalcAuthors1(){
         String pathModule ="org.eclipse.egit.ui/src/org/eclipse/egit/ui/internal/dialogs/CommitDialog#okPressed().mjava";
         Module module = modulesAll.get(pathModule);
-        module.calcDevTotal(commitsAll, commitEdgesMethod);
+        module.calcAuthors(commitsAll, commitEdgesMethod);
         assertEquals(6, module.getAuthors());
     }
     @Test
     public void testCalcAuthors2(){
         String pathModule ="org.eclipse.egit.core/src/org/eclipse/egit/core/project/RepositoryMapping#getGitDirAbsolutePath().mjava";
         Module module = modulesAll.get(pathModule);
-        module.calcDevTotal(commitsAll, commitEdgesMethod);
+        module.calcAuthors(commitsAll, commitEdgesMethod);
         assertEquals(3, module.getAuthors());
     }
     @Test
     public void testCalcAuthors3(){
         String pathModule ="org.eclipse.egit.ui/src/org/eclipse/egit/ui/internal/actions/MergeActionHandler#execute(ExecutionEvent).mjava";
         Module module = modulesAll.get(pathModule);
-        module.calcDevTotal(commitsAll, commitEdgesMethod);
+        module.calcAuthors(commitsAll, commitEdgesMethod);
         assertEquals(4, module.getAuthors());
     }
     @Test
     public void testCalcAuthors4(){
         String pathModule ="org.eclipse.egit.ui/src/org/eclipse/egit/ui/internal/history/GitHistoryPage#initActions().mjava";
         Module module = modulesAll.get(pathModule);
-        module.calcDevTotal(commitsAll, commitEdgesMethod);
+        module.calcAuthors(commitsAll, commitEdgesMethod);
         assertEquals(4, module.getAuthors());
     }
     @Test
     public void testCalcAuthors5(){
         String pathModule ="org.eclipse.egit.ui/src/org/eclipse/egit/ui/internal/repository/tree/RepositoryTreeNode#hashCode().mjava";
         Module module = modulesAll.get(pathModule);
-        module.calcDevTotal(commitsAll, commitEdgesMethod);
+        module.calcAuthors(commitsAll, commitEdgesMethod);
         assertEquals(3, module.getAuthors());
+    }
+    @Test
+    public void testCalcLOC1(){
+        String pathModule ="";
+        Module module = modulesAll.get(pathModule);
+        module.calcLOC(pathRepositoryMethod);
+        assertEquals(, module.getLOC());
+    }
+    @Test
+    public void testCalcLOC2(){
+        String pathModule ="";
+        Module module = modulesAll.get(pathModule);
+        module.calcLOC(pathRepositoryMethod);
+        assertEquals(, module.getLOC());
+    }
+    @Test
+    public void testCalcLOC3(){
+        String pathModule ="";
+        Module module = modulesAll.get(pathModule);
+        module.calcLOC(pathRepositoryMethod);
+        assertEquals(, module.getLOC());
+    }
+
+    @Test
+    public void testCalcFixChgNum1(){
+        String pathModule="org.eclipse.egit.ui/src/org/eclipse/egit/ui/internal/dialogs/CompareTreeView#reactOnOpen(OpenEvent).mjava";
+        Module module = modulesAll.get(pathModule);
+        module.calcFixChgNum(commitsAll, bugsAll, commitEdgesMethod);
+        assertEquals(6 ,module.fixChgNum);
+    }
+
+    @Test
+    public void testCalcMinInterval1(){
+        String pathModule ="org.eclipse.egit.ui/src/org/eclipse/egit/ui/internal/repository/tree/RepositoryTreeNode#hashCode().mjava";
+        Module module = modulesAll.get(pathModule);
+        module.calcMinInterval(commitsAll, commitEdgesMethod);
+        assertEquals(1, module.getMinInterval());
+    }
+
+    @Test
+    public void testCalcIsBuggyTrue1(){
+        String pathModule ="org.eclipse.egit.ui/src/org/eclipse/egit/ui/internal/repository/RepositoriesViewLabelProvider#getImage(Object).mjava";
+        Module module = modulesAll.get(pathModule);
+        module.calcIsBuggy(commitsAll, bugsAll, commitEdgesMethod);
+        assertEquals(1, module.getIsBuggy());
+    }
+
+    @Test
+    public void testCalcIsBuggyTrue2(){
+        String pathModule ="org.eclipse.egit.ui/src/org/eclipse/egit/ui/internal/history/command/AbstractHistoryCommandHandler#getSelection(GitHistoryPage).mjava";
+        Module module = modulesAll.get(pathModule);
+        module.calcIsBuggy(commitsAll, bugsAll, commitEdgesMethod);
+        assertEquals(1, module.getIsBuggy());
+    }
+
+    @Test
+    public void testCalcIsBuggyTrue3(){
+        String pathModule ="org.eclipse.egit.ui/src/org/eclipse/egit/ui/internal/decorators/GitDocument#GitDocument(IResource).mjava";
+        Module module = modulesAll.get(pathModule);
+        module.calcIsBuggy(commitsAll, bugsAll, commitEdgesMethod);
+        assertEquals(1, module.getIsBuggy());
+    }
+
+    @Test
+    public void testCalcIsBuggyTrue4(){
+        String pathModule ="org.eclipse.egit.ui/src/org/eclipse/egit/ui/internal/staging/StagingView#doReload(Repository,IProgressMonitor,String).mjava";
+        Module module = modulesAll.get(pathModule);
+        module.calcIsBuggy(commitsAll, bugsAll, commitEdgesMethod);
+        assertEquals(1, module.getIsBuggy());
+    }
+
+    @Test
+    public void testCalcIsBuggyTrue5(){
+        String pathModule ="org.eclipse.egit.ui/src/org/eclipse/egit/ui/internal/clone/SourceBranchPage#createControl(Composite).mjava";
+        Module module = modulesAll.get(pathModule);
+        module.calcIsBuggy(commitsAll, bugsAll, commitEdgesMethod);
+        assertEquals(1, module.getIsBuggy());
+    }
+
+    @Test
+    public void testCalcIsBuggyFalse1(){
+        String pathModule ="org.eclipse.egit.ui/src/org/eclipse/egit/ui/internal/CachedCheckboxTreeViewer#setAllChecked(boolean).mjava";
+        Module module = modulesAll.get(pathModule);
+        module.calcIsBuggy(commitsAll, bugsAll, commitEdgesMethod);
+        assertEquals(0, module.getIsBuggy());
+    }
+
+    @Test
+    public void testCalcIsBuggyFalse2(){
+        String pathModule ="org.eclipse.egit.ui/src/org/eclipse/egit/ui/internal/actions/ShowBlameAction#ShowBlameAction().mjava";
+        Module module = modulesAll.get(pathModule);
+        module.calcIsBuggy(commitsAll, bugsAll, commitEdgesMethod);
+        assertEquals(0, module.getIsBuggy());
+    }
+
+    @Test
+    public void testCalcIsBuggyFalse3(){
+        String pathModule ="org.eclipse.egit.ui/src/org/eclipse/egit/ui/internal/repository/RepositoryRemotePropertySource#getPropertyValue(Object).mjava";
+        Module module = modulesAll.get(pathModule);
+        module.calcIsBuggy(commitsAll, bugsAll, commitEdgesMethod);
+        assertEquals(0, module.getIsBuggy());
+    }
+
+    @Test
+    public void testCalcIsBuggyFalse4(){
+        String pathModule ="org.eclipse.egit.ui/src/org/eclipse/egit/ui/internal/dialogs/CompareTreeView.PathNode#toString().mjava";
+        Module module = modulesAll.get(pathModule);
+        module.calcIsBuggy(commitsAll, bugsAll, commitEdgesMethod);
+        assertEquals(0, module.getIsBuggy());
+    }
+
+    @Test
+    public void testCalcIsBuggyFalse5(){
+        String pathModule ="org.eclipse.egit.core/src/org/eclipse/egit/core/securestorage/EGitSecureStore#getCredentials(URIish).mjava";
+        Module module = modulesAll.get(pathModule);
+        module.calcIsBuggy(commitsAll, bugsAll, commitEdgesMethod);
+        assertEquals(0, module.getIsBuggy());
     }
 }

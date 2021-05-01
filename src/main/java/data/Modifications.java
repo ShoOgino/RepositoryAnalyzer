@@ -1,6 +1,8 @@
 package data;
 
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import misc.DeserializerModification;
 import org.apache.commons.collections4.keyvalue.MultiKey;
 import org.apache.commons.collections4.map.MultiKeyMap;
 
@@ -12,6 +14,7 @@ import java.util.stream.Collectors;
 
 @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
 public class Modifications implements Map<MultiKey<? extends String>, Modification> {
+    @JsonDeserialize(keyUsing = DeserializerModification.class)
     private final MultiKeyMap<String, Modification> modifications = new MultiKeyMap<>();
 
     @Override

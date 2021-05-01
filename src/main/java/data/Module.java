@@ -3,6 +3,7 @@ package data;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import ch.uzh.ifi.seal.changedistiller.ChangeDistiller;
 import ch.uzh.ifi.seal.changedistiller.distilling.FileDistiller;
@@ -57,7 +58,7 @@ public class Module {
 	@CsvField(pos = 12)
 	int moduleHistories=0;
 	@CsvField(pos = 13)
-	int authors    = 0;
+	int authors = 0;
 	@CsvField(pos = 14)
 	int stmtAdded=0;
 	@CsvField(pos = 15)
@@ -84,6 +85,36 @@ public class Module {
 	int elseAdded=0;
 	@CsvField(pos = 26)
 	int elseDeleted=0;
+
+	//@CsvField(pos = 27)
+	int LOC = 0;
+	//@CsvField(pos = 28)
+	int addLOC = 0;
+	//@CsvField(pos = 29)
+	int delLOC = 0;
+	//@CsvField(pos = 30)
+	int devMinor    = 0;
+	//@CsvField(pos = 31)
+	int devMajor    = 0;
+	//@CsvField(pos = 32)
+	double ownership   = 0;
+	//@CsvField(pos = 33)
+	int fixChgNum = 0;
+	//@CsvField(pos = 34)
+	int pastBugNum  = 0;
+	//@CsvField(pos = 35)
+	int bugIntroNum = 0;
+	//@CsvField(pos = 36)
+	int logCoupNum  = 0;
+	//@CsvField(pos = 37)
+	int period      = 0;
+	//@CsvField(pos = 38)
+	double avgInterval = 0;
+	//@CsvField(pos = 39)
+	int maxInterval = 0;
+	//@CsvField(pos = 40)
+	int minInterval = 0;
+
 	public Module() {
 		this.path=new String();
 		this.modifications = new Modifications();
@@ -99,7 +130,7 @@ public class Module {
 	}
 
 	public void calcMaxNesting(String pathRepository) {
-		CompilationUnit unit =getCompilationUnit(pathRepository);
+		CompilationUnit unit = getCompilationUnit(pathRepository);
 		VisitorMaxNesting visitorMaxNesting = new VisitorMaxNesting();
 		unit.accept(visitorMaxNesting);
 		maxNesting = visitorMaxNesting.maxNesting;
@@ -361,7 +392,7 @@ public class Module {
 		this.elseAdded = elseAdded;
 	}
 
-	public  void calcDevTotal(Commits commitsAll, String[] intervalCommit) {
+	public  void calcAuthors(Commits commitsAll, String[] intervalCommit) {
 		Set<String> setAuthors = new HashSet<>();
 		List<Commit> commits =calcCommitsInInterval(commitsAll,intervalCommit);
 		commits.stream().forEach(item->setAuthors.add(item.author));
@@ -373,6 +404,212 @@ public class Module {
 		List<Commit> commits =calcCommitsInInterval(commitsAll, intervalCommit);
 		int moduleHistories=commits.size();
 		this.moduleHistories = moduleHistories;
+	}
+
+	public  void calcLOC(String pathRepository) {
+		String sourceCode = readSourceCode(pathRepository);
+		this.LOC = (int)sourceCode.lines().count();
+	}
+
+	public  void calcAddLOC(Commits commitsAll, String[] intervalCommit) {
+		List<Modification> modifications = calcModificationsInInterval(commitsAll, intervalCommit);
+		int addLOC=0;
+		for(Modification modification: modifications){
+			addLOC += modification.calcNOAddedLines();
+		}
+		this.addLOC = addLOC;
+	}
+
+	public  void calcDelLOC(Commits commitsAll, String[] intervalCommit) {
+		List<Modification> modifications = calcModificationsInInterval(commitsAll, intervalCommit);
+		int delLOC=0;
+		for(Modification modification: modifications){
+			delLOC += modification.calcNODeletedLines();
+		}
+		this.delLOC = delLOC;
+	}
+
+	public  void calcDevMinor(Commits commitsAll, String[] intervalCommit) {
+		List<Modification> modifications = calcModificationsInInterval(commitsAll, intervalCommit);
+		Set<String> setAuthors = new HashSet<>();
+		modifications.stream().forEach(item->setAuthors.add(item.author));
+
+		int devMinor = 0;
+		for(String author: setAuthors){
+			int count = modifications.stream().filter(item->item.author.equals(author)).collect(Collectors.toList()).size();
+			if(count/(float)modifications.size()<0.2){
+				devMinor++;
+			}
+		}
+		this.devMinor = devMinor;
+	}
+
+	public  void calcDevMajor(Commits commitsAll, String[] intervalCommit) {
+		List<Modification> modifications = calcModificationsInInterval(commitsAll, intervalCommit);
+		Set<String> setAuthors = new HashSet<>();
+		modifications.stream().forEach(item->setAuthors.add(item.author));
+
+		int devMajor = 0;
+		for(String author: setAuthors){
+			int count = modifications.stream().filter(item->item.author.equals(author)).collect(Collectors.toList()).size();
+			if(0.2<count/(float)modifications.size()){
+				devMajor++;
+			}
+		}
+		this.devMajor = devMajor;
+	}
+
+	public void calcOwnership(Commits commitsAll, String[] intervalCommit) {
+		List<Modification> modifications = calcModificationsInInterval(commitsAll, intervalCommit);
+		Set<String> setAuthors = new HashSet<>();
+		modifications.stream().forEach(item->setAuthors.add(item.author));
+
+		for(String author: setAuthors){
+			int count = modifications.stream().filter(item->item.author.equals(author)).collect(Collectors.toList()).size();
+			double ownership = count/(float)modifications.size();
+			if(this.ownership<ownership){
+				this.ownership=ownership;
+			}
+		}
+	}
+
+	public  void calcFixChgNum(Commits commitsAll, Bugs bugsAll, String[] intervalCommit) {
+		List<BugAtomic> bugAtomics = bugsAll.identifyAtomicBugs(this.path);
+		for(BugAtomic bugAtomic: bugAtomics){
+			int dateBegin = commitsAll.get(intervalCommit[0]).date;
+			int dateCommitFix = commitsAll.get(bugAtomic.idCommitFix).date;
+			int dateEnd = commitsAll.get(intervalCommit[1]).date;
+			if(dateBegin<dateCommitFix & dateCommitFix<dateEnd){
+				this.fixChgNum++;
+			}
+		}
+	}
+
+	public  void calcPastBugNum(Commits commitsAll, Bugs bugsAll, String[] intervalCommit) {
+		List<Bug> bugs = bugsAll.identifyBug(this.path);
+		for(Bug bug: bugs){
+			for(BugAtomic bugAtomic: bug.bugAtomics){
+				int dateBegin = commitsAll.get(intervalCommit[0]).date;
+				int dateCommitFix = commitsAll.get(bugAtomic.idCommitFix).date;
+				int dateEnd = commitsAll.get(intervalCommit[1]).date;
+				if(dateBegin<dateCommitFix & dateCommitFix<dateEnd){
+					this.pastBugNum++;
+					break;
+				}
+			}
+		}
+	}
+
+	public void calcBugIntroNum(Modules modulesAll, Commits commitsAll, Bugs bugsAll, String[] intervalCommit) {
+		List<Commit> commitsInInterval = calcCommitsInInterval(commitsAll, intervalCommit);
+		for(Commit commit : commitsInInterval){
+			if(isCommitInducingBugToOtherModule(commit, modulesAll, bugsAll)){
+				this.bugIntroNum++;
+			}
+		}
+	}
+
+	public boolean isCommitInducingBugToOtherModule(Commit commit, Modules modulesAll, Bugs bugsAll){
+		for(Modification modification: commit.modifications.values()){
+			Module module = modification.type.equals("DELETE")? modulesAll.get(modification.pathOld):modulesAll.get(modification.pathNew);
+			Set<String> paths = module.modifications.values().stream().map(a->a.pathNew).collect(Collectors.toSet());
+			for(String path: paths){
+				List<Bug> bugs = bugsAll.identifyBug(path);
+				for(Bug bug: bugs){
+					for(BugAtomic bugAtomic: bug.bugAtomics){
+						for(String idCommitInduce: bugAtomic.idsCommitInduce){
+							if(idCommitInduce.equals(commit.id)){
+								return true;
+							}
+						}
+					}
+				}
+			}
+		}
+		return false;
+	}
+
+	public  void calcLogCoupNum(Modules modulesAll, Commits commitsAll, Bugs bugsAll, String[] intervalCommit) {
+		List<Commit> commitsInInterval = calcCommitsInInterval(commitsAll, intervalCommit);
+		for(Commit commit : commitsInInterval){
+			if(isCommitChangeModuleHasBeenBuggy(commit, commitsAll, modulesAll, bugsAll)){
+				this.logCoupNum++;
+			}
+		}
+	}
+
+	private boolean isCommitChangeModuleHasBeenBuggy(Commit commit, Commits commitsAll, Modules modulesAll, Bugs bugsAll) {
+		for(Modification modification: commit.modifications.values()){
+			Module module = modification.type.equals("DELETE")? modulesAll.get(modification.pathOld):modulesAll.get(modification.pathNew);
+			Set<String> paths = module.modifications.values().stream().map(a->a.pathNew).collect(Collectors.toSet());
+			for(String path: paths){
+				List<Bug> bugs = bugsAll.identifyBug(path);
+				for(Bug bug: bugs){
+					for(BugAtomic bugAtomic: bug.bugAtomics){
+						for(String idCommitInduce: bugAtomic.idsCommitInduce){
+							if(commitsAll.get(idCommitInduce).date<commit.date){
+								return true;
+							}
+						}
+					}
+				}
+			}
+		}
+		return false;
+	}
+
+	public  void calcPeriod(Commits commitsAll, String[] intervalCommit) {
+		int periodFrom = Integer.MAX_VALUE;
+		int periodTo   = commitsAll.get(intervalCommit[1]).date;
+		for(Modification modification: modifications.values()){
+			if(modification.date<periodFrom){
+				periodFrom = modification.date;
+			}
+		}
+		if(periodFrom<commitsAll.get(intervalCommit[0]).date){
+			periodFrom = commitsAll.get(intervalCommit[0]).date;
+		}
+		this.period = (periodTo-periodFrom)/(60*60*24);
+	}
+
+	public  void calcAvgInterval(Commits commitsAll, String[] intervalCommit) {
+		calcPeriod(commitsAll ,intervalCommit);
+		calcModuleHistories(commitsAll ,intervalCommit);
+		this.avgInterval = this.period/this.moduleHistories;
+	}
+
+	public  void calcMaxInterval(Commits commitsAll, String[] intervalCommit) {
+		int maxInterval=0;
+		List<Modification> modifications = calcModificationsInInterval(commitsAll, intervalCommit);
+		modifications = modifications.stream().sorted(Comparator.comparingInt(a -> a.date)).collect(Collectors.toList());
+		if(modifications.size()<2){
+			this.maxInterval=0;
+			return;
+		}
+		for(int i=0;i<modifications.size()-1;i++){
+			int interval=modifications.get(i+1).date-modifications.get(i).date;
+			if(maxInterval<interval){
+				maxInterval=interval;
+			}
+		}
+		this.maxInterval=maxInterval/(60*60*24*7);
+	}
+
+	public  void calcMinInterval(Commits commitsAll, String[] intervalCommit) {
+		int minInterval=Integer.MAX_VALUE;
+		List<Modification> modifications = calcModificationsInInterval(commitsAll, intervalCommit);
+		modifications = modifications.stream().sorted(Comparator.comparingInt(a -> a.date)).collect(Collectors.toList());
+		if(modifications.size()<2){
+			this.minInterval=0;
+			return;
+		}
+		for(int i=0;i<modifications.size()-1;i++){
+			int interval=modifications.get(i+1).date-modifications.get(i).date;
+			if(interval < minInterval){
+				minInterval=interval;
+			}
+		}
+		this.minInterval=minInterval/(60*60*24*7);
 	}
 
 	public  List<Commit> calcCommitsInInterval(Commits commitsAll, String[] intervalCommit){
@@ -405,18 +642,19 @@ public class Module {
 		return modificationsResult;
 	}
 
-	public  void calcIsBuggy(Commits commitsAll,Bugs bugsAll,  String[] intervalCommit) {
-		HashMap<String, String[]> fix2induces = bugsAll.get(path);
-		if(fix2induces==null)return;
-		for(String idCommitFix: fix2induces.keySet()) {
-			for(String idCommitInduce: fix2induces.get(idCommitFix)) {
-				Commit commitFix = commitsAll.get(idCommitFix);
-				Commit commitInduce = commitsAll.get(idCommitInduce);
-				Commit commitTimePoint = commitsAll.get(intervalCommit[1]);
-				if(commitInduce.date<commitTimePoint.date & commitTimePoint.date<commitFix.date)isBuggy=1;
+	public void calcIsBuggy(Commits commitsAll,Bugs bugsAll,  String[] intervalCommit) {
+		List<BugAtomic> bugAtomics = bugsAll.identifyAtomicBugs(path);
+		if(bugAtomics==null)return;
+		for(BugAtomic bugAtomic: bugAtomics) {
+			Commit commitFix = commitsAll.get(bugAtomic.idCommitFix);
+			Commit commitTimePoint = commitsAll.get(intervalCommit[1]);
+			Commit commitLastBugFix = commitsAll.get(intervalCommit[2]);
+			for (String idCommit : bugAtomic.idsCommitInduce) {
+				Commit commitInduce = commitsAll.get(idCommit);
+				if (commitInduce.date < commitTimePoint.date & commitTimePoint.date < commitFix.date & commitFix.date < commitLastBugFix.date)
+					isBuggy = 1;
 			}
 		}
-		return;
 	}
 
 	public CompilationUnit getCompilationUnit(String pathRepository) {
@@ -426,6 +664,11 @@ public class Module {
 		parser.setSource(sourceClass.toCharArray());
 		CompilationUnit unit =(CompilationUnit) parser.createAST(new NullProgressMonitor());
 		return unit;
+	}
+
+	public String readSourceCode(String pathRepository){
+		String sourceMethod = readFile( pathRepository+"/" + path);
+		return sourceMethod;
 	}
 
 	public  List<SourceCodeChange> identifyChanges(Modification modification){
@@ -508,6 +751,7 @@ public class Module {
 			distiller.extractClassifiedSourceCodeChanges(sourcePrev, sourceCurrent);
 		} catch(Exception e) {
 			System.err.println("Warning: error while change distilling. " + e.getMessage());
+			System.out.println(this.path);
 		}
 		return distiller.getSourceCodeChanges();
 	}

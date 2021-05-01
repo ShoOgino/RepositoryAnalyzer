@@ -1,14 +1,17 @@
 package data;
 
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import com.fasterxml.jackson.core.JsonParseException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.module.SimpleModule;
 import me.tongfei.progressbar.ProgressBar;
+import misc.DeserializerModification;
+import org.apache.commons.collections4.keyvalue.MultiKey;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.errors.GitAPIException;
-import org.eclipse.jgit.diff.DiffEntry;
-import org.eclipse.jgit.diff.DiffFormatter;
-import org.eclipse.jgit.diff.HistogramDiff;
-import org.eclipse.jgit.diff.RenameDetector;
+import org.eclipse.jgit.diff.*;
 import org.eclipse.jgit.lib.*;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.storage.file.FileRepositoryBuilder;
@@ -22,10 +25,13 @@ import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
+import static util.FileUtil.findFiles;
+import static util.FileUtil.readFile;
+
 @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
 public class Commits implements Map<String, Commit> {
     private final TreeMap<String, Commit> commits = new TreeMap<>();
-    public void loadCommits(String pathRepository, String idCommitHead) throws IOException,  GitAPIException {
+    public void loadCommitsFromRepository(String pathRepository, String idCommitHead) throws IOException,  GitAPIException {
         Repository repository = new FileRepositoryBuilder()
                 .setGitDir(new File(pathRepository + "/.git"))
                 .build();
@@ -74,11 +80,11 @@ public class Commits implements Map<String, Commit> {
         diffEntries = rd.compute();
 
         for (DiffEntry diffEntry : diffEntries) {
-            loadModification(repository, revCommit, diffEntry);
+            loadModification(repository, revCommit, diffEntry, diffFormatter);
         }
     }
 
-    public void loadModification(Repository repository, RevCommit revCommit, DiffEntry diffEntry) throws IOException {
+    public void loadModification(Repository repository, RevCommit revCommit, DiffEntry diffEntry, DiffFormatter diffFormatter) throws IOException {
         Modification modification = new Modification();
         modification.idCommit = revCommit.getName();
         modification.date = revCommit.getCommitTime();
@@ -101,10 +107,24 @@ public class Commits implements Map<String, Commit> {
             ObjectLoader loader = repository.open(diffEntry.getNewId().toObjectId());
             modification.sourceNew = new String(loader.getBytes());
         }
+
+        for(Edit changeOriginal : diffFormatter.toFileHeader(diffEntry).toEditList()){
+            Change change = new Change();
+            for(int i = changeOriginal.getBeginA(); i< changeOriginal.getEndA(); i++){
+                change.before.add(i);
+            }
+            for(int i = changeOriginal.getBeginB(); i< changeOriginal.getEndB(); i++){
+                change.after.add(i);
+            }
+            modification.changes.add(change);
+        }
+
         commits.get(modification.idCommit).modifications.put(modification.idCommit, modification.pathOld , modification.pathNew, modification);
     }
 
     public void save(String pathCommits){
+        File dir = new File(pathCommits);
+        dir.mkdirs();
         for(String id : ProgressBar.wrap(commits.keySet(), "saveCommits")) {
             try (FileOutputStream fos = new FileOutputStream(pathCommits+"/"+id+".json");
                  OutputStreamWriter osw = new OutputStreamWriter(fos, StandardCharsets.UTF_8);
@@ -185,5 +205,22 @@ public class Commits implements Map<String, Commit> {
     @Override
     public int hashCode() {
         return commits.hashCode();
+    }
+
+    public void loadCommitsFromFile(String pathCommits) {
+        List<String> paths = findFiles(pathCommits, "json");
+        for(String path: ProgressBar.wrap(paths, "loadCommitsFromFile")) {
+            try {
+                String strFile = readFile(path);
+                ObjectMapper mapper = new ObjectMapper();
+                SimpleModule simpleModule = new SimpleModule();
+                simpleModule.addKeyDeserializer(MultiKey.class, new DeserializerModification());
+                mapper.registerModule(simpleModule);
+                Commit commit = mapper.readValue(strFile, new TypeReference<Commit>() {});
+                commits.put(commit.id, commit );
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
     }
 }

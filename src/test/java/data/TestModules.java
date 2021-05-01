@@ -7,7 +7,6 @@ import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.util.List;
-import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -33,7 +32,7 @@ public class TestModules {
     static public void setUp() throws GitAPIException, IOException {
         util.RepositoryUtil.checkoutRepository(pathRepositoryFile, commitEdgesFile[1]);
         util.RepositoryUtil.checkoutRepository(pathRepositoryMethod, commitEdgesMethod[1]);
-        commitsAll.loadCommits(pathRepositoryMethod, idCommitHead);
+        commitsAll.loadCommitsFromRepository(pathRepositoryMethod, idCommitHead);
         modulesAll.analyzeModules(commitsAll);
     }
 
