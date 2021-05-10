@@ -64,7 +64,7 @@ public class Main {
 				commitsAll.save(pathCommits);
 			}
 
-			modulesAll.checkParent();
+			//modulesAll.checkParent();
 			bugsAll.loadBugs(pathBugs);
 
 			//個々のモジュールについてメトリクスを計測
