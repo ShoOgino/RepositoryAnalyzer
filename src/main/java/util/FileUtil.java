@@ -55,7 +55,6 @@ public class FileUtil {
                     Files.walk(Paths.get(dirRoot))
                             .map(Path::toString)
                             .filter(p -> p.endsWith(ext))
-                            .map(p -> p.replace("\\", "/"))
                             .collect(Collectors.toList())
             );
         } catch (IOException e) {
@@ -74,7 +73,6 @@ public class FileUtil {
                                 .map(Path::toString)
                                 .filter(p -> p.endsWith(ext))
                                 .filter(p -> !p.contains(extIgnore))
-                                .map(p -> p.replace("\\", "/"))
                                 .collect(Collectors.toList())
                 );
             }

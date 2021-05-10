@@ -1,5 +1,6 @@
 package data;
 
+import com.google.common.base.Objects;
 import me.tongfei.progressbar.ProgressBar;
 import org.eclipse.jgit.api.errors.GitAPIException;
 import org.junit.jupiter.api.BeforeAll;
@@ -7,6 +8,7 @@ import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -20,7 +22,7 @@ public class TestModules {
     public static String pathRepositoryMethod = pathProject+"/repositoryMethod";
     public static String pathRepositoryFile = pathProject+"/repositoryFile";
     public static String pathDataset = pathProject+"/datasets/"+ commitEdgesMethod[0].substring(0,8)+"_"+ commitEdgesMethod[1].substring(0,8)+".csv";
-    public static String pathModules = pathProject+"/modules.json";
+    public static String pathModules = pathProject+"/modules";
     public static String pathCommits = pathProject+"/commits";
     public static String pathBugs = pathProject+"/bugs.json";
 
@@ -30,38 +32,36 @@ public class TestModules {
 
     @BeforeAll
     static public void setUp() throws GitAPIException, IOException {
-        util.RepositoryUtil.checkoutRepository(pathRepositoryFile, commitEdgesFile[1]);
-        util.RepositoryUtil.checkoutRepository(pathRepositoryMethod, commitEdgesMethod[1]);
-        commitsAll.loadCommitsFromRepository(pathRepositoryMethod, idCommitHead);
-        modulesAll.analyzeModules(commitsAll);
     }
 
     @Test
     public void testIdentifyCommitsParent() throws Exception {
+        /*
+        util.RepositoryUtil.checkoutRepository(pathRepositoryFile, commitEdgesFile[1]);
+        util.RepositoryUtil.checkoutRepository(pathRepositoryMethod, commitEdgesMethod[1]);
+        commitsAll.loadCommitsFromRepository(pathRepositoryMethod, idCommitHead);
+        modulesAll.analyzeModules(commitsAll);
         for(Module module: ProgressBar.wrap(modulesAll.values(), "testidentifyparents")){
             for(Modification modification: module.modifications.values()){
-                if(modification.sourceOld==null) continue;
+                if(modification.type.equals("ADD"))continue;;
                 boolean isParentOk = false;
-                for(String idCommitParent: modification.parents){
-                    List<Modification> modificationsBefore = module.modifications.get(idCommitParent);
-                    for(Modification modificationBefore: modificationsBefore){
-                        if(modification.sourceOld.equals(modificationBefore.sourceNew)){
-                            isParentOk=true;
-                        }
+                List<Modification> modificationsBefore = module.modifications.findFromIdCommit(modification.parent);
+                for(Modification modificationBefore: modificationsBefore){
+                    if(Objects.equal(modificationBefore.sourceNew, modification.sourceOld)){
+                        isParentOk=true;
+                        break;
                     }
                 }
                 if(isParentOk)continue;
                 System.out.println(module.path);
                 System.out.println(modification.idCommit);
                 System.out.println(modification.sourceOld);
-                for(String idCommitParent: modification.parents){
-                    List<Modification> modificationsBefore = module.modifications.get(idCommitParent);
-                    for(Modification modificationBefore: modificationsBefore) {
-                        System.out.println(modificationBefore.idCommit);
-                        System.out.println(modificationBefore.sourceNew);
-                    }
+                for(Modification modificationBefore: modificationsBefore) {
+                    System.out.println(modificationBefore.idCommit);
+                    System.out.println(modificationBefore.sourceNew);
                 }
             }
         }
+            */
     }
 }

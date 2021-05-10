@@ -253,7 +253,8 @@ public class Module {
 	public  void calcAvgChurn(Commits commitsAll, String[] intervalCommit) {
 		calcChurn(commitsAll, intervalCommit);
 		calcModuleHistories(commitsAll, intervalCommit);
-		this.avgChurn= churn/(float)moduleHistories;
+		if(moduleHistories==0) this.avgChurn = 0;
+		else this.avgChurn= churn/(float)moduleHistories;
 	}
 
 	public  void calcMaxChurn(Commits commitsAll, String[] intervalCommit) {
@@ -294,7 +295,8 @@ public class Module {
 			}
 		}
 		calcModuleHistories(commitsAll, intervalCommit);
-		this.avgStmtDeleted = avgStmtDeleted/(double)moduleHistories;
+		if(moduleHistories==0) this.avgStmtDeleted = 0;
+		else this.avgStmtDeleted = avgStmtDeleted/(double)moduleHistories;
 	}
 
 	public  void calcMaxStmtDeleted(Commits commitsAll, String[] intervalCommit) {
@@ -335,7 +337,8 @@ public class Module {
 			}
 		}
 		calcModuleHistories(commitsAll, intervalCommit);
-		this.avgStmtAdded = avgStmtAdded/(double)moduleHistories;
+		if(moduleHistories==0) this.avgStmtAdded = 0;
+		else this.avgStmtAdded = avgStmtAdded/(double)moduleHistories;
 	}
 
 	public  void calcMaxStmtAdded(Commits commitsAll, String[] intervalCommit) {
@@ -407,8 +410,8 @@ public class Module {
 	}
 
 	public  void calcLOC(String pathRepository) {
-		String sourceCode = readSourceCode(pathRepository);
-		this.LOC = (int)sourceCode.lines().count();
+		//String sourceCode = readSourceCode(pathRepository);
+		//this.LOC = (int)sourceCode.count();
 	}
 
 	public  void calcAddLOC(Commits commitsAll, String[] intervalCommit) {
@@ -499,7 +502,7 @@ public class Module {
 			}
 		}
 	}
-
+/*
 	public void calcBugIntroNum(Modules modulesAll, Commits commitsAll, Bugs bugsAll, String[] intervalCommit) {
 		List<Commit> commitsInInterval = calcCommitsInInterval(commitsAll, intervalCommit);
 		for(Commit commit : commitsInInterval){
@@ -508,7 +511,8 @@ public class Module {
 			}
 		}
 	}
-
+ */
+/*
 	public boolean isCommitInducingBugToOtherModule(Commit commit, Modules modulesAll, Bugs bugsAll){
 		for(Modification modification: commit.modifications.values()){
 			Module module = modification.type.equals("DELETE")? modulesAll.get(modification.pathOld):modulesAll.get(modification.pathNew);
@@ -528,7 +532,8 @@ public class Module {
 		}
 		return false;
 	}
-
+*/
+	/*
 	public  void calcLogCoupNum(Modules modulesAll, Commits commitsAll, Bugs bugsAll, String[] intervalCommit) {
 		List<Commit> commitsInInterval = calcCommitsInInterval(commitsAll, intervalCommit);
 		for(Commit commit : commitsInInterval){
@@ -537,7 +542,8 @@ public class Module {
 			}
 		}
 	}
-
+	 */
+/*
 	private boolean isCommitChangeModuleHasBeenBuggy(Commit commit, Commits commitsAll, Modules modulesAll, Bugs bugsAll) {
 		for(Modification modification: commit.modifications.values()){
 			Module module = modification.type.equals("DELETE")? modulesAll.get(modification.pathOld):modulesAll.get(modification.pathNew);
@@ -557,7 +563,7 @@ public class Module {
 		}
 		return false;
 	}
-
+*/
 	public  void calcPeriod(Commits commitsAll, String[] intervalCommit) {
 		int periodFrom = Integer.MAX_VALUE;
 		int periodTo   = commitsAll.get(intervalCommit[1]).date;
@@ -648,10 +654,10 @@ public class Module {
 		for(BugAtomic bugAtomic: bugAtomics) {
 			Commit commitFix = commitsAll.get(bugAtomic.idCommitFix);
 			Commit commitTimePoint = commitsAll.get(intervalCommit[1]);
-			Commit commitLastBugFix = commitsAll.get(intervalCommit[2]);
+			//todo: Commit commitLastBugFix = commitsAll.get(intervalCommit[2]);
 			for (String idCommit : bugAtomic.idsCommitInduce) {
 				Commit commitInduce = commitsAll.get(idCommit);
-				if (commitInduce.date < commitTimePoint.date & commitTimePoint.date < commitFix.date & commitFix.date < commitLastBugFix.date)
+				if (commitInduce.date < commitTimePoint.date & commitTimePoint.date < commitFix.date)
 					isBuggy = 1;
 			}
 		}

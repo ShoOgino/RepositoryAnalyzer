@@ -1,11 +1,15 @@
 package data;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.Set;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import lombok.Data;
+import org.apache.commons.collections4.keyvalue.MultiKey;
 
+import java.util.*;
+
+@Data
 public class Modification {
 	public String idCommit;
+	public String idCommitParent;
 	public int date;
 	public String author;
 	public boolean isMerge;
@@ -14,12 +18,19 @@ public class Modification {
 	public String pathOld;
 	public String sourceNew;
 	public String sourceOld;
+	@JsonIgnore
 	public Changes changes;
-	public Set<String> parents;
-	public Set<String> children;
+	public String pathNewParent;
+	@JsonIgnore
+	public Modifications parentsModification;
+	public List<String> parents;
+	@JsonIgnore
+	public Modifications childrenModification;
+	public List<String> children;
 
 	public Modification() {
 		this.idCommit= "";
+		this.idCommitParent = "";
 		this.date=0;
 		this.author="";
 		this.isMerge=false;
@@ -28,8 +39,18 @@ public class Modification {
 		this.sourceOld= "";
 		this.sourceNew= "";
 		this.changes = new Changes();
-		this.parents = new HashSet<>();
-		this.children = new HashSet<>();
+		this.pathNewParent = "";
+		this.parentsModification = new Modifications();
+		this.parents = new ArrayList<>();
+		this.childrenModification = new Modifications();
+		this.children = new ArrayList<>();
+	}
+
+	public void loadAncestors(Modifications modifications){
+		modifications.put(this.idCommitParent, this.idCommit, this.pathOld, this.pathNew, this);
+		for(Modification modification: this.parentsModification.values()) {
+			if(!modifications.containsValue(modification))modification.loadAncestors(modifications);
+		}
 	}
 
 	public int calcNOAddedLines(){

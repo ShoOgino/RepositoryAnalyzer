@@ -15,7 +15,7 @@ public class VisitorFanIn extends ASTVisitor {
     CompilationUnit file;
     String pathFile ="";
     String pathMethod ="";
-    ArrayList<String> methodsCalled= new ArrayList<String>();
+    ArrayList<String> methodsCalled= new ArrayList<>();
     HashMap<String, Module> modules = new HashMap<>();
 
     public VisitorFanIn(CompilationUnit ast, String pathFile, HashMap<String, Module> modules) {
@@ -30,33 +30,24 @@ public class VisitorFanIn extends ASTVisitor {
         if(node.getBody()==null | node.resolveBinding()==null) {
             return false;
         }
-        //System.out.println("1");
         pathMethod = calculatePathMethod(node);
         if(pathMethod==null){
-            System.out.println(pathMethod);
             return super.visit(node);
         }
-        //System.out.println("2");
-        if(pathMethod.contains("test")|pathMethod.contains("Test")){//exclude test code
-            return super.visit(node);
-        }
-        //System.out.println(pathMethod);
-        //System.out.println("3");
         Module module=modules.get(pathMethod);
-        //System.out.println("4");
         if(module==null){
         }else {
             module.id = calculateIDMethod(node);
         }
-        //System.out.println("5");
         return super.visit(node);
     }
 
     public boolean visit(MethodInvocation node) {
         String id=calculateIDMethod(node);
-        if(id!=null) methodsCalled.add(id);
+        methodsCalled.add(id);
         return super.visit(node);
     }
+
     //purpose: skip anonymous class.
     public boolean visit(AnonymousClassDeclaration classDeclarationStatement) {
         return false;

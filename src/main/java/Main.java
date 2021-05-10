@@ -1,6 +1,7 @@
-import data.Bugs;
-import data.Commits;
-import data.Modules;
+import com.google.common.base.Objects;
+import data.*;
+import data.Module;
+import me.tongfei.progressbar.ProgressBar;
 import misc.ArgBean;
 import org.kohsuke.args4j.CmdLineException;
 import org.kohsuke.args4j.CmdLineParser;
@@ -10,6 +11,8 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
 
 import static util.RepositoryUtil.checkoutRepository;
 
@@ -34,7 +37,8 @@ public class Main {
 		final String[] commitEdgesFile = bean.commitEdgesFile;
 		String pathRepositoryMethod = pathProject+"/repositoryMethod";
 		String pathRepositoryFile = pathProject+"/repositoryFile";
-		String pathDataset = pathProject+"/datasets/"+ commitEdgesMethod[0].substring(0,8)+"_"+ commitEdgesMethod[1].substring(0,8)+"_"+commitEdgesMethod[2].substring(0,8)+".csv";
+		String pathDataset = pathProject+"/datasets/"+ commitEdgesMethod[0].substring(0,8)+"_"+ commitEdgesMethod[1].substring(0,8)+".csv";
+		//String pathDataset = pathProject+"/datasets/"+ commitEdgesMethod[0].substring(0,8)+"_"+ commitEdgesMethod[1].substring(0,8)+"_"+commitEdgesMethod[2].substring(0,8)+".csv";
 		String pathModules = pathProject+"/modules";
 		String pathCommits = pathProject+"/commits";
 		String pathBugs = pathProject+"/bugs.json";
@@ -42,22 +46,25 @@ public class Main {
 		Modules modulesAll = new Modules();
 		Bugs bugsAll = new Bugs();
 
-
 		try {
+			//checkoutRepository(pathRepositoryFile, commitEdgesFile[1]);
+			//modulesAll.calcFanIn(pathRepositoryFile, commitEdgesFile);
 			if(bean.isSkipAnalyzation){
 				//コミット・モジュールデータをファイルからロード
 				commitsAll.loadCommitsFromFile(pathCommits);
 				modulesAll.loadModulesFromFile(pathModules);
 			}else {
 				//そのリポジトリに過去に存在したモジュール・コミット・バグをまとめる。
-				commitsAll.loadCommitsFromRepository(pathRepositoryMethod, idCommitHead);
+				commitsAll.loadCommitsFromRepository(pathRepositoryMethod, idCommitHead, pathCommits);
 				modulesAll.analyzeModules(commitsAll);
 			}
+
 			if(bean.isSave) {
-				commitsAll.save(pathCommits);
 				modulesAll.save(pathModules);
+				commitsAll.save(pathCommits);
 			}
 
+			modulesAll.checkParent();
 			bugsAll.loadBugs(pathBugs);
 
 			//個々のモジュールについてメトリクスを計測

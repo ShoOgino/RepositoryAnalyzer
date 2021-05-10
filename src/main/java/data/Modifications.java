@@ -42,12 +42,24 @@ public class Modifications implements Map<MultiKey<? extends String>, Modificati
         return modifications.get(key);
     }
 
-    public List<Modification> get(String idCommit) {
+    public Modification get(String idCommitParent, String idCommit, String pathOld, String pathNew){
+        return modifications.get(idCommitParent, idCommit, pathOld, pathNew);
+    }
+
+    public List<Modification> findFromIdCommit(String idCommit) {
         return modifications.values().stream().filter(a->a.idCommit.equals(idCommit)).collect(Collectors.toList());
     }
 
-    public void put(String idCommit, String pathOld, String pathNew, Modification modification){
-        modifications.put(new MultiKey(idCommit, pathOld, pathNew), modification);
+    public List<Modification> findFromPathOld(String pathOld) {
+        return modifications.values().stream().filter(a->a.pathOld.equals(pathOld)).collect(Collectors.toList());
+    }
+
+    public List<Modification> findFromPathNew(String pathNew) {
+        return modifications.values().stream().filter(a->a.pathNew.equals(pathNew)).collect(Collectors.toList());
+    }
+
+    public void put(String idCommitParent, String idCommit, String pathOld, String pathNew, Modification modification){
+        modifications.put(idCommitParent, idCommit, pathOld, pathNew, modification);
     }
 
     @Override

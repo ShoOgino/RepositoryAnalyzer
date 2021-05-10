@@ -35,28 +35,72 @@ public class Modules implements Map<String, Module>{
 
     public void analyzeModules(Commits commits){
         identifyModificationsOnModule(commits);
+        //check();
         identifyCommitsParent(commits);
-        identifyCommitsChild();
+        //identifyCommitsChild();
         identifyCommitsHead();
         identifyCommitsRoot();
     }
 
+    private void check() {
+        for(Module module: ProgressBar.wrap(modules.values(),"check")) {
+            boolean hasAddOrRenameOrCopy = false;
+            for(Modification modification: module.modifications.values()) {
+                if(Objects.equals(modification.type, "ADD")
+                | Objects.equals(modification.type, "RENAME")
+                | Objects.equals(modification.type, "COPY")){
+                    hasAddOrRenameOrCopy=true;
+                }
+            }
+            if (hasAddOrRenameOrCopy) continue;
+            else System.out.println(module.path);
+        }
+    }
+    public void checkParent(){
+        int countAll = 0;
+        int count = 0;
+        for(Module module: ProgressBar.wrap(modules.values(), "testIdentifyParents")){
+            for(Modification modification: module.modifications.values()){
+                if(modification.type.equals("ADD"))continue;;
+                countAll++;
+                if(modification.parents.size()==0){
+                    System.out.println(module.path);
+                    System.out.println(modification.idCommit);
+                    continue;
+                }
+                boolean isParentOk = false;
+                List<Modification> modificationsBefore = module.modifications.findFromIdCommit(modification.parents.get(0));
+                for(Modification modificationBefore: modificationsBefore){
+                    if(Objects.equals(modification.sourceOld, modificationBefore.sourceNew)){
+                        isParentOk=true;
+                        break;
+                    }
+                }
+                if(isParentOk)continue;
+                count++;
+                System.out.println(module.path);
+                System.out.println(modification.idCommit);
+                System.out.println(modification.sourceOld);
+                for(Modification modificationBefore: modificationsBefore) {
+                    System.out.println(modificationBefore.idCommit);
+                    System.out.println(modificationBefore.sourceNew);
+                }
+            }
+        }
+        System.out.println(countAll);
+        System.out.println(count);
+    }
+
     public void identifyModificationsOnModule(Commits commits){
-        for(Commit commit: ProgressBar.wrap(commits.values(), "identifyModificationsOnModule")){
-            for(Modification modification: commit.modifications.values()){
-                switch (modification.type) {
-                    case "ADD":
-                        addCommit(modification, modification.pathNew);
-                        break;
-                    case "RENAME":
-                    case "COPY":
+        for(Commit commit: ProgressBar.wrap(commits.values(), "identifyModificationsOnModule")) {
+            for (Modifications modifications : commit.idParent2Modifications.values()) {
+                for (Modification modification : modifications.values()) {
+                    if(!modification.pathOld.equals("/dev/null")) {
                         addCommit(modification, modification.pathOld);
+                    }
+                    if(!modification.pathNew.equals("/dev/null")) {
                         addCommit(modification, modification.pathNew);
-                        break;
-                    case "MODIFY":
-                    case "DELETE":
-                        addCommit(modification, modification.pathOld);
-                        break;
+                    }
                 }
             }
         }
@@ -68,64 +112,65 @@ public class Modules implements Map<String, Module>{
             Module module = new Module(pathModule);
             modules.put(pathModule, module);
         }
-        modules.get(pathModule).modifications.put(modification.idCommit, modification.pathOld, modification.pathNew, modification);
+        modules.get(pathModule).modifications.put(modification.idCommitParent, modification.idCommit, modification.pathOld, modification.pathNew, modification);
     }
 
 
     //個々のモジュールについて、そのモジュールに対するコミットについて、親子関係を解析する。親の方向。
-    //リネームを貫通して追跡する。
     public void identifyCommitsParent(Commits commits){
         for(String pathModule: ProgressBar.wrap(modules.keySet(),"identifyCommitsParent")) {
-            ArrayList<Modification> modificationsComplete = new ArrayList<>();
-            Queue<Modification> modificationsTarget = new ArrayDeque<>(modules.get(pathModule).modifications.values());
+            Module moduleTarget = modules.get(pathModule);
+            Queue<Modification> modificationsTarget = new ArrayDeque<>(moduleTarget.getModifications().values());
 
             Modification modificationTarget;
-            Commit commitNow;
             while(0 < modificationsTarget.size()) {
                 modificationTarget = modificationsTarget.poll();
-                //早期リターン。既に辿っているなら、辿らない。
-                if(modificationsComplete.stream().map(s->s.idCommit).collect(Collectors.toList()).contains(modificationTarget.idCommit))
-                    continue;
-                //早期リターン。対象コミットがaddかつmergeでないなら、親コミットはない。それ以上辿らない。
-                if(modificationTarget.type.equals("ADD")&!modificationTarget.isMerge){
-                    modificationsComplete.add(modificationTarget);
-                    continue;
-                }
-                //対象コミットから、複数ある親コミットをそれぞれたどる。
-                for(String idCommitParent : commits.get(modificationTarget.idCommit).parents) {
-                    commitNow = commits.get(idCommitParent);
-                    while(true) {
-                        Modification finalModificationTarget = modificationTarget;
-                        List<Modification> modifications =
-                                commitNow
-                                        .modifications
-                                        .values()
-                                        .stream()
-                                        .filter(a->
-                                                                !finalModificationTarget.type.equals("ADD")&finalModificationTarget.pathOld.equals(a.pathNew) |
-                                                                        (
-                                                                                finalModificationTarget.pathOld.equals(a.pathOld)
-                                                                                        &finalModificationTarget.pathNew.equals(a.pathNew)
-                                                                        )
-                                        )
-                                        .collect(Collectors.toList());
-                        if (!modifications.isEmpty()) {
-                            modificationTarget.parents.add(commitNow.id);
-                            Modification modification = modifications.get(0);
-                            modificationsTarget.add(modification);
+                moduleTarget.modifications.put(modificationTarget.idCommitParent, modificationTarget.idCommit, modificationTarget.pathOld, modificationTarget.pathNew, modificationTarget);
+                if (modificationTarget.type.equals("ADD") & !modificationTarget.isMerge) {//親が存在しない。
+                } else {//親が存在する。
+                    if(!modificationTarget.parentsModification.isEmpty()){//親特定済み
+                        //if(Objects.equals(modificationTarget.type, "RENAME")
+                        //| Objects.equals(modificationTarget.type, "COPY")){
+                            Modifications modifications = new Modifications();
+                            modificationTarget.loadAncestors(modifications);
+                            for (Entry<MultiKey<? extends String>, Modification> m : modifications.entrySet()) {
+                                moduleTarget.modifications.put(m.getKey(), m.getValue());
+                            }
+                        //}
+                        continue;
+                    }
+                    Set<String> idsCommitTarget = new HashSet<>();
+                    Module moduleBefore = modules.get(modificationTarget.pathOld);
+                    if (moduleBefore != null) idsCommitTarget.addAll(moduleBefore.modifications.values().stream().map(a -> a.idCommit).collect(Collectors.toList()));
+                    Module moduleAfter = modules.get(modificationTarget.pathNew);
+                    if (moduleAfter != null) idsCommitTarget.addAll(moduleAfter.modifications.values().stream().map(a -> a.idCommit).collect(Collectors.toList()));
+                    Commit commitNow = commits.get(modificationTarget.idCommitParent);
+                    while (true) {
+                        if (idsCommitTarget.contains(commitNow.id)) {
+                            for (Modifications modifications : commitNow.idParent2Modifications.values()) {
+                                for (Modification modification : modifications.values()) {
+                                    if (Objects.equals(modificationTarget.pathNewParent, modification.pathNew)) {
+                                        modificationTarget.parentsModification.put(modification.idCommitParent, modification.idCommit, modification.pathOld, modification.pathNew, modification);
+                                        modificationTarget.parents.add(modification.idCommit);
+                                        modificationsTarget.add(modification);
+                                        break;
+                                    }
+                                }
+                            }
                             break;
                         }
-                        if(0 == commitNow.parents.size()) break;
-                        else commitNow = commits.get(commitNow.parents.get(0));
+                        commitNow = commits.get(commitNow.idParentMaster);
+                        if (commitNow == null) break;
                     }
                 }
-                modificationsComplete.add(modificationTarget);
+            }
+            /*
+            modules.get(pathModule).modifications.clear();
+            for(Modification modificationTemp: modificationsComplete) {
+                moduleTarget.modifications.put(modificationTemp.idCommitParent, modificationTemp.idCommit, modificationTemp.pathOld, modificationTemp.pathNew, modificationTemp);
             }
 
-            modules.get(pathModule).modifications.clear();
-            for(Modification tmp:modificationsComplete) {
-                modules.get(pathModule).modifications.put(tmp.idCommit, tmp.pathOld, tmp.pathNew, tmp);
-            }
+             */
         }
     }
 
@@ -149,8 +194,8 @@ public class Modules implements Map<String, Module>{
                 }
                 Module moduleNew = modules.get(pathModuleNew);
                 for(Modification modificationNew: moduleNew.modifications.values()){
-                    if(modificationNew.parents.contains(modificationTarget.idCommit)){
-                        modificationTarget.children.add(modificationNew.idCommit);
+                    if(modificationNew.idCommitParent.equals(modificationTarget.idCommit)){
+                        modificationTarget.children.add(modificationNew.idCommitParent);
                         modificationsTarget.add(modificationNew);
                     }
                 }
@@ -159,7 +204,7 @@ public class Modules implements Map<String, Module>{
 
             module.modifications.clear();
             for(Modification modificationTemp: modificationsComplete) {
-                module.modifications.put(modificationTemp.idCommit, modificationTemp.pathOld, modificationTemp.pathNew, modificationTemp);
+                module.modifications.put(modificationTemp.idCommitParent, modificationTemp.idCommit, modificationTemp.pathOld, modificationTemp.pathNew, modificationTemp);
             }
         }
     }
@@ -181,7 +226,7 @@ public class Modules implements Map<String, Module>{
             Module module = modules.get(path);
             //parentsの要素がないidCommitが、そのモジュールにとってのルートコミット。
             for (Modification modification : module.modifications.values()) {
-                if (0 == modification.parents.size()) {
+                if (modification.idCommitParent.equals("")) {
                     module.commitsRoot.add(modification.idCommit);
                 }
             }
@@ -189,7 +234,7 @@ public class Modules implements Map<String, Module>{
     }
 
     public void save(String pathModules) {
-        for(Map.Entry<String, Module> entry : ProgressBar.wrap(modules.entrySet(), "saveModules")) {
+        for(Entry<String, Module> entry : ProgressBar.wrap(modules.entrySet(), "saveModules")) {
             File file =  new File(pathModules+"/"+entry.getKey()+".json");
             File dir = new File(file.getParent());
             dir.mkdirs();
@@ -236,27 +281,16 @@ public class Modules implements Map<String, Module>{
     }
 
     //FanInは個々のモジュールで独立に計算できない。仕方なく別口で計算する。
-    private void calcFanIn(String pathRepositoryFile, String[] commitEdgesFile) throws GitAPIException, IOException {
+    public void calcFanIn(String pathRepositoryFile, String[] commitEdgesFile) throws GitAPIException, IOException {
         final String[] sourcePathDirs = {};
         final String[] libraries      = findFiles(pathRepositoryFile, ".jar", "test").toArray(new String[0]);
-        //todo やっつけ仕事。これらのファイルのCompilationUnitオブジェクトを作ろうとするとNullポインタエラーが出るので、スキップする。
-        final String[] sources        = findFiles(pathRepositoryFile, ".java", "test")
-                .stream()
-                .filter(item->
-                        !item.contains("/lttng/org.eclipse.linuxtools.tmf.ui/src/org/eclipse/linuxtools/internal/tmf/ui/parsers/custom/CustomTxtTraceDefinition.java")
-                        &!item.contains("/lttng/org.eclipse.linuxtools.gdbtrace.core/src/org/eclipse/linuxtools/internal/gdbtrace/core/trace/GdbTrace.java")
-                        &!item.contains("/lttng/org.eclipse.linuxtools.lttng2.control.ui/src/org/eclipse/linuxtools/internal/lttng2/control/ui/views/property/TraceProbeEventPropertySource.java")
-                        &!item.contains("/lttng/org.eclipse.linuxtools.lttng2.control.ui/src/org/eclipse/linuxtools/internal/lttng2/control/ui/views/property/TraceSessionPropertySource.java")
-                        &!item.contains("/lttng/org.eclipse.linuxtools.tmf.core/src/org/eclipse/linuxtools/tmf/core/parsers/custom/CustomTxtTraceDefinition.java")
-                )
-                .collect(Collectors.toList())
-                .toArray(new String[1]);
+        final String[] sources        = findFiles(pathRepositoryFile, ".java", "test").toArray(new String[0]);
 
         ASTParser parser = ASTParser.newParser(AST.JLS3);
         final Map<String,String> options = JavaCore.getOptions();
-        options.put(JavaCore.COMPILER_COMPLIANCE, JavaCore.VERSION_1_6);
-        options.put(JavaCore.COMPILER_CODEGEN_TARGET_PLATFORM, JavaCore.VERSION_1_6);
-        options.put(JavaCore.COMPILER_SOURCE, JavaCore.VERSION_1_6);
+        options.put(JavaCore.COMPILER_COMPLIANCE, JavaCore.VERSION_1_7);
+        options.put(JavaCore.COMPILER_CODEGEN_TARGET_PLATFORM, JavaCore.VERSION_1_7);
+        options.put(JavaCore.COMPILER_SOURCE, JavaCore.VERSION_1_7);
         parser.setCompilerOptions(options);
         parser.setResolveBindings(true);
         parser.setKind(ASTParser.K_COMPILATION_UNIT);

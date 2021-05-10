@@ -16,7 +16,7 @@ public class Bugs implements Map<String, Bug>{
         try {
             String strBugs = readFile(pathBugs);
             ObjectMapper mapper = new ObjectMapper();
-            Map<String, Map<String, Map<String, List<String>>>> temp = mapper.readValue(strBugs, new TypeReference<>() {});
+            Map<String, Map<String, Map<String, List<String>>>> temp = mapper.readValue(strBugs, new TypeReference<Map<String, Map<String, Map<String, List<String>>>>>() {});
             for(String path: temp.keySet()){
                 for(String idReport: temp.get(path).keySet()){
                     for(String idCommitFix: temp.get(path).get(idReport).keySet()){

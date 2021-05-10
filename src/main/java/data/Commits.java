@@ -1,9 +1,7 @@
 package data;
 
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
-import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import me.tongfei.progressbar.ProgressBar;
@@ -31,7 +29,7 @@ import static util.FileUtil.readFile;
 @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
 public class Commits implements Map<String, Commit> {
     private final TreeMap<String, Commit> commits = new TreeMap<>();
-    public void loadCommitsFromRepository(String pathRepository, String idCommitHead) throws IOException,  GitAPIException {
+    public void loadCommitsFromRepository(String pathRepository, String idCommitHead, String pathCommits) throws IOException,  GitAPIException {
         Repository repository = new FileRepositoryBuilder()
                 .setGitDir(new File(pathRepository + "/.git"))
                 .build();
@@ -41,7 +39,8 @@ public class Commits implements Map<String, Commit> {
         List<RevCommit> commitsAll = StreamSupport
                 .stream(git.log().add(objectIdCommitHead).call().spliterator(), false)
                 .collect(Collectors.toList());
-        Collections.reverse(commitsAll);//past2future
+        //Collections.reverse(commitsAll);//past2future
+        Collections.shuffle(commitsAll);
 
         //それぞれのコミットについて、変更内容を取得する。
         for (RevCommit revCommit : ProgressBar.wrap(commitsAll, "loadCommits")) {
@@ -50,16 +49,202 @@ public class Commits implements Map<String, Commit> {
             commit.date = revCommit.getCommitTime();
             commit.author = revCommit.getAuthorIdent().getName();
             commit.isMerge = revCommit.getParentCount() > 1;
-            commit.parents.addAll(Arrays.stream(revCommit.getParents()).map(RevCommit::getName).collect(Collectors.toList()));
-            commits.put(commit.id, commit);
+            commit.idParentMaster = revCommit.getParentCount()==0 ? "0000000000000000000000000000000000000000" : revCommit.getParent(0).getName();
+            if(0==revCommit.getParentCount()){
+                DiffFormatter diffFormatter = new DiffFormatter(System.out);
+                diffFormatter.setRepository(repository);
+                diffFormatter.setDetectRenames(true);
+                diffFormatter.setDiffAlgorithm(new HistogramDiff());
+                ObjectReader reader = repository.newObjectReader();
+                //diffEntryを取得
+                List<DiffEntry> diffEntries;
+                AbstractTreeIterator oldTreeIter =new EmptyTreeIterator();
+                AbstractTreeIterator newTreeIter = new CanonicalTreeParser(null, reader, revCommit.getTree());
+                diffEntries = diffFormatter.scan(oldTreeIter, newTreeIter);
+                //renameを検出。明示的。
+                RenameDetector rd = new RenameDetector(repository);
+                rd.setRenameScore(30);
+                rd.addAll(diffEntries);
+                diffEntries = rd.compute();
 
-            loadModifications(repository, revCommit);
-        }
-        for (String idCommit : commits.keySet()) {
-            for (String idCommitParent : commits.get(idCommit).parents) {
-                commits.get(idCommitParent).childs.add(idCommit);
+                Modifications modifications = new Modifications();
+                for (DiffEntry diffEntry : diffEntries) {
+                    Modification modification = new Modification();
+                    modification.idCommit = revCommit.getName();
+                    modification.idCommitParent = "0000000000000000000000000000000000000000";
+                    modification.date = revCommit.getCommitTime();
+                    modification.author = revCommit.getAuthorIdent().getName();
+                    modification.isMerge = revCommit.getParentCount() > 1;
+                    modification.type = diffEntry.getChangeType().toString();
+
+                    modification.pathOld = diffEntry.getOldPath();
+                    modification.pathNew = diffEntry.getNewPath();
+                    modification.pathNewParent = diffEntry.getOldPath();
+                    //コミット直前のソースコードを取得
+                    if (diffEntry.getOldId().name().equals("0000000000000000000000000000000000000000")) {
+                        modification.sourceOld = null;
+                    } else {
+                        ObjectLoader loader = repository.open(diffEntry.getOldId().toObjectId());
+                        modification.sourceOld = new String(loader.getBytes());
+                    }
+                    //コミット直後のソースコードを取得
+                    if (diffEntry.getNewId().name().equals("0000000000000000000000000000000000000000")) {
+                        modification.sourceNew = null;
+                    } else {
+                        ObjectLoader loader = repository.open(diffEntry.getNewId().toObjectId());
+                        modification.sourceNew = new String(loader.getBytes());
+                    }
+
+                    for (Edit changeOriginal : diffFormatter.toFileHeader(diffEntry).toEditList()) {
+                        Change change = new Change();
+                        for (int i = changeOriginal.getBeginA(); i < changeOriginal.getEndA(); i++) {
+                            change.before.add(i);
+                        }
+                        for (int i = changeOriginal.getBeginB(); i < changeOriginal.getEndB(); i++) {
+                            change.after.add(i);
+                        }
+                        modification.changes.add(change);
+                    }
+                    modifications.put(modification.idCommitParent, modification.idCommit, modification.pathOld, modification.pathNew, modification);
+                }
+                commit.idParent2Modifications.put("0000000000000000000000000000000000000000", modifications);
+            }else {
+                //if(0<revCommit.getParentCount()) {
+                //    RevCommit revCommitParent = revCommit.getParent(0);
+                //    Modifications modifications = test(repository, revCommit, revCommitParent);
+                //    commit.idParent2Modifications.put(revCommitParent.getName(), modifications);
+                //}
+/*
+                for(RevCommit revCommitParent: revCommit.getParents()) {
+                    Modifications  modifications = test(repository, revCommit, revCommitParent);
+                    commit.idParent2Modifications.put(revCommitParent.getName(), modifications);
+                }
+*/
+
+                for (int i = 0; i < revCommit.getParentCount(); i++) {
+                    if (i == 0) {
+                        Modifications modifications = test(repository, revCommit, revCommit.getParent(i));
+                        commit.idParent2Modifications.put(revCommit.getParent(i).getName(), modifications);
+                    } else {
+                        Modifications modifications = new Modifications();
+                        commit.idParent2Modifications.put(revCommit.getParent(i).getName(), modifications);
+                    }
+                }
+
+                for (RevCommit revCommitParentRenew : revCommit.getParents()) {
+                    for (RevCommit revCommitParentRefer : revCommit.getParents()) {
+                        if (Objects.equals(revCommitParentRenew.getName(), revCommitParentRefer.getName())) continue;
+                        Modifications modificationsRenew = commit.idParent2Modifications.get(revCommitParentRenew.getName());
+                        Modifications modificationsRefer = commit.idParent2Modifications.get(revCommitParentRefer.getName());
+                        for (Modification modification : modificationsRefer.values()) {
+                            if (0 == modificationsRenew.findFromPathNew(modification.pathNew).size() & !modification.type.equals("DELETE")) {
+                                Modification m = new Modification();
+                                m.idCommit = revCommit.getName();
+                                m.idCommitParent = revCommitParentRenew.getName();
+                                m.date = revCommit.getCommitTime();
+                                m.author = revCommit.getAuthorIdent().getName();
+                                m.isMerge = revCommit.getParentCount() > 1;
+                                m.type = "UNCHANGE";
+                                m.pathOld = modification.pathNew;
+                                m.pathNew = modification.pathNew;
+                                m.sourceOld = modification.sourceNew;
+                                m.sourceNew = modification.sourceNew;
+                                m.pathNewParent = modification.pathNew;
+                                modificationsRenew.put(m.idCommitParent, m.idCommit, m.pathOld, m.pathNew, m);
+                            }
+                        }
+                    }
+                }
+               /*
+                for (RevCommit revCommitParentRenew : revCommit.getParents()) {
+                        if (Objects.equals(revCommitParentRenew.getName(), revCommit.getParent(0).getName())) continue;
+                        Modifications modificationsRenew = commit.idParent2Modifications.get(revCommitParentRenew.getName());
+                        Modifications modificationsRefer = commit.idParent2Modifications.get(revCommit.getParent(0).getName());
+                        for (Modification modification : modificationsRefer.values()) {
+                            if (0 == modificationsRenew.findFromPathNew(modification.pathNew).size() & !modification.type.equals("DELETE")) {
+                                Modification m = new Modification();
+                                m.idCommit = revCommit.getName();
+                                m.idCommitParent = revCommitParentRenew.getName();
+                                m.date = revCommit.getCommitTime();
+                                m.author = revCommit.getAuthorIdent().getName();
+                                m.isMerge = revCommit.getParentCount() > 1;
+                                m.type = "UNCHANGE";
+                                m.pathOld = modification.pathNew;
+                                m.pathNew = modification.pathNew;
+                                m.sourceOld = modification.sourceNew;
+                                m.sourceNew = modification.sourceNew;
+                                m.pathNewParent = modification.pathNew;
+                                modificationsRenew.put(m.idCommitParent, m.idCommit, m.pathOld, m.pathNew, m);
+                            }
+                        }
+                }
+*/
             }
+            commits.put(commit.id, commit);
         }
+    }
+
+    public Modifications test(Repository repository, RevCommit revCommit, RevCommit revCommitParent) throws IOException {
+        Modifications modifications = new Modifications();
+        try(DiffFormatter diffFormatter = new DiffFormatter(System.out)) {
+            diffFormatter.setRepository(repository);
+            diffFormatter.setDetectRenames(true);
+            diffFormatter.setDiffAlgorithm(new HistogramDiff());
+            ObjectReader reader = repository.newObjectReader();
+            //diffEntryを取得
+            AbstractTreeIterator oldTreeIter = new CanonicalTreeParser(null, reader, revCommitParent.getTree());
+            AbstractTreeIterator newTreeIter = new CanonicalTreeParser(null, reader, revCommit.getTree());
+            //renameを検出。明示的。
+            RenameDetector rd = new RenameDetector(repository);
+            rd.setRenameScore(30);
+            rd.addAll(diffFormatter.scan(oldTreeIter, newTreeIter));
+            List<DiffEntry> diffEntries = rd.compute();
+            for (DiffEntry diffEntry : diffEntries) {
+                Modification modification = new Modification();
+                modification.idCommit = revCommit.getName();
+                modification.idCommitParent = revCommitParent.getName();
+                modification.date = revCommit.getCommitTime();
+                modification.author = revCommit.getAuthorIdent().getName();
+                modification.isMerge = revCommit.getParentCount() > 1;
+                modification.type = diffEntry.getChangeType().toString();
+
+                modification.pathOld = diffEntry.getOldPath();
+                modification.pathNew = diffEntry.getNewPath();
+                if (modification.type.equals("ADD") & modification.isMerge)
+                    modification.pathNewParent = diffEntry.getNewPath();
+                else modification.pathNewParent = diffEntry.getOldPath();
+
+                //コミット直前のソースコードを取得
+                if (diffEntry.getOldId().name().equals("0000000000000000000000000000000000000000")) {
+                    modification.sourceOld = null;
+                } else {
+                    ObjectLoader loader = repository.open(diffEntry.getOldId().toObjectId());
+                    modification.sourceOld = new String(loader.getBytes());
+                }
+                //コミット直後のソースコードを取得
+                if (diffEntry.getNewId().name().equals("0000000000000000000000000000000000000000")) {
+                    modification.sourceNew = null;
+                } else {
+                    ObjectLoader loader = repository.open(diffEntry.getNewId().toObjectId());
+                    modification.sourceNew = new String(loader.getBytes());
+                }
+
+                for (Edit changeOriginal : diffFormatter.toFileHeader(diffEntry).toEditList()) {
+                    Change change = new Change();
+                    for (int i = changeOriginal.getBeginA(); i < changeOriginal.getEndA(); i++) {
+                        change.before.add(i);
+                    }
+                    for (int i = changeOriginal.getBeginB(); i < changeOriginal.getEndB(); i++) {
+                        change.after.add(i);
+                    }
+                    modification.changes.add(change);
+                }
+                modifications.put(modification.idCommitParent, modification.idCommit, modification.pathOld, modification.pathNew, modification);
+            }
+        }catch (IOException e) {
+            // ハンドラに処理を移す
+        }
+        return modifications;
     }
 
     public void loadModifications(Repository repository, RevCommit revCommit) throws IOException {
@@ -119,21 +304,14 @@ public class Commits implements Map<String, Commit> {
             modification.changes.add(change);
         }
 
-        commits.get(modification.idCommit).modifications.put(modification.idCommit, modification.pathOld , modification.pathNew, modification);
+        //commits.get(modification.idCommit).modifications.put(modification.idCommit, modification.pathOld , modification.pathNew, modification);
     }
 
     public void save(String pathCommits){
         File dir = new File(pathCommits);
         dir.mkdirs();
-        for(String id : ProgressBar.wrap(commits.keySet(), "saveCommits")) {
-            try (FileOutputStream fos = new FileOutputStream(pathCommits+"/"+id+".json");
-                 OutputStreamWriter osw = new OutputStreamWriter(fos, StandardCharsets.UTF_8);
-                 BufferedWriter writer = new BufferedWriter(osw)){
-                ObjectMapper mapper = new ObjectMapper();
-                mapper.writeValue(writer, commits.get(id));
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
+        for(Entry<String, Commit> entry : ProgressBar.wrap(commits.entrySet(), "saveCommits")) {
+            entry.getValue().save(pathCommits+"/"+entry.getKey()+".json");
         }
     }
 
