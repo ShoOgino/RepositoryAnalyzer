@@ -1,20 +1,9 @@
-import com.google.common.base.Objects;
 import data.*;
-import data.Module;
-import me.tongfei.progressbar.ProgressBar;
 import misc.ArgBean;
 import org.kohsuke.args4j.CmdLineException;
 import org.kohsuke.args4j.CmdLineParser;
 
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.nio.charset.Charset;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.stream.Collectors;
-
-import static util.RepositoryUtil.checkoutRepository;
 
 public class Main {
 	// リポジトリ・バグデータを分析し、各種データをファイルにまとめ直す。(AnalyzeRepository)
@@ -47,9 +36,11 @@ public class Main {
 		Bugs bugsAll = new Bugs();
 
 		try {
-			//checkoutRepository(pathRepositoryFile, commitEdgesFile[1]);
-			//modulesAll.calcFanIn(pathRepositoryFile, commitEdgesFile);
-			if(bean.isSkipAnalyzation){
+			if(bean.saveHistoryToFile) {
+				modulesAll.saveToFile(pathModules);
+				commitsAll.saveToFile(pathCommits);
+			}
+			if(bean.loadHistoryFromFile){
 				//コミット・モジュールデータをファイルからロード
 				commitsAll.loadCommitsFromFile(pathCommits);
 				modulesAll.loadModulesFromFile(pathModules);
@@ -58,21 +49,14 @@ public class Main {
 				commitsAll.loadCommitsFromRepository(pathRepositoryMethod, idCommitHead, pathCommits);
 				modulesAll.analyzeModules(commitsAll);
 			}
-
-			if(bean.isSave) {
-				modulesAll.save(pathModules);
-				commitsAll.save(pathCommits);
+			if(bean.calcMetrics){
+				//個々のモジュールについてメトリクスを計測
+				Modules modulesTarget = new Modules();
+				modulesTarget.identifyTargetModules(modulesAll, pathRepositoryMethod, commitEdgesMethod);
+				modulesTarget.calcCodeMetrics(pathRepositoryFile, commitEdgesFile, pathRepositoryMethod, commitEdgesMethod);
+				modulesTarget.calcProcessMetrics(modulesAll, commitsAll, bugsAll, commitEdgesMethod);
+				modulesTarget.saveMetricsAsRecords(pathDataset);
 			}
-
-			//modulesAll.checkParent();
-			bugsAll.loadBugs(pathBugs);
-
-			//個々のモジュールについてメトリクスを計測
-			Modules modulesTarget = new Modules();
-			modulesTarget.identifyTargetModules(modulesAll, pathRepositoryMethod, commitEdgesMethod);
-			modulesTarget.calcCodeMetrics(pathRepositoryFile, commitEdgesFile, pathRepositoryMethod, commitEdgesMethod);
-			modulesTarget.calcProcessMetrics(modulesAll, commitsAll, bugsAll, commitEdgesMethod);
-			modulesTarget.saveMetricsAsRecords(pathDataset);
 		} catch (Exception e) {
 			e.printStackTrace();
 		}

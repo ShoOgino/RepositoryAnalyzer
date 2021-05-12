@@ -31,7 +31,7 @@ public class TestModule {
         util.RepositoryUtil.checkoutRepository(pathRepositoryMethod, commitEdgesMethod[1]);
         commitsAll.loadCommitsFromRepository(pathRepositoryMethod, idCommitHead, pathCommits);
         modulesAll.analyzeModules(commitsAll);
-        bugsAll.loadBugs(pathBugs);
+        bugsAll.loadBugsFromFile(pathBugs);
     }
 
     @Test

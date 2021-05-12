@@ -32,7 +32,6 @@ public class Module {
 	public Modifications modifications;
 	public ArrayList<String> commitsHead;
 	public ArrayList<String> commitsRoot;
-
 	@CsvField(pos = 2)
 	int isBuggy=0;
 	@CsvField(pos = 3)
@@ -85,6 +84,9 @@ public class Module {
 	int elseAdded=0;
 	@CsvField(pos = 26)
 	int elseDeleted=0;
+
+	@CsvField(pos = 27)
+	int hasBeenBuggy=0;
 
 	//@CsvField(pos = 27)
 	int LOC = 0;
@@ -648,9 +650,8 @@ public class Module {
 		return modificationsResult;
 	}
 
-	public void calcIsBuggy(Commits commitsAll,Bugs bugsAll,  String[] intervalCommit) {
+	public void calcIsBuggy(Commits commitsAll, Bugs bugsAll,  String[] intervalCommit) {
 		List<BugAtomic> bugAtomics = bugsAll.identifyAtomicBugs(path);
-		if(bugAtomics==null)return;
 		for(BugAtomic bugAtomic: bugAtomics) {
 			Commit commitFix = commitsAll.get(bugAtomic.idCommitFix);
 			Commit commitTimePoint = commitsAll.get(intervalCommit[1]);
@@ -662,6 +663,19 @@ public class Module {
 			}
 		}
 	}
+
+	public void calcHasBeenBuggy(Commits commitsAll, Bugs bugsAll, String[] intervalCommit) {
+		List<BugAtomic> bugAtomics = bugsAll.identifyAtomicBugs(path);
+		if(bugAtomics==null)return;
+		for(BugAtomic bugAtomic: bugAtomics) {
+			Commit commitFix = commitsAll.get(bugAtomic.idCommitFix);
+			Commit commitTimePoint = commitsAll.get(intervalCommit[1]);
+			if (commitFix.date < commitTimePoint.date){
+					this.hasBeenBuggy = 1;
+			}
+		}
+	}
+
 
 	public CompilationUnit getCompilationUnit(String pathRepository) {
 		String sourceMethod = readFile( pathRepository+"/" + path);

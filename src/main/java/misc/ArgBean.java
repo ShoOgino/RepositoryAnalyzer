@@ -14,7 +14,10 @@ public class ArgBean {
     public  String[] commitEdgesFile = new String[2] ;
     @Option(name="--skipAnalyzation")
     public boolean isSkipAnalyzation;
-    @Option(name="--save")
-    public boolean isSave;
-
+    @Option(name="--saveHistoryToFile")
+    public boolean saveHistoryToFile;
+    @Option(name="--loadHistoryFromFile")
+    public boolean loadHistoryFromFile;
+    @Option(name="--calcMetrics")
+    public boolean calcMetrics;
 }

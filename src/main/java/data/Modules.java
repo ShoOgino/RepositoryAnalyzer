@@ -233,7 +233,7 @@ public class Modules implements Map<String, Module>{
         }
     }
 
-    public void save(String pathModules) {
+    public void saveToFile(String pathModules) {
         for(Entry<String, Module> entry : ProgressBar.wrap(modules.entrySet(), "saveModules")) {
             File file =  new File(pathModules+"/"+entry.getKey()+".json");
             File dir = new File(file.getParent());
@@ -344,6 +344,7 @@ public class Modules implements Map<String, Module>{
             //module.calcMaxInterval(commitsAll, commitEdges);
             //module.calcMinInterval(commitsAll, commitEdges);
             module.calcIsBuggy(commitsAll, bugsAll, commitEdges);
+            module.calcHasBeenBuggy(commitsAll, bugsAll, commitEdges);
         }
     }
     //算出されたレコードをファイルに保存する。

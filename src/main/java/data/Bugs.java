@@ -12,7 +12,7 @@ import static util.FileUtil.readFile;
 
 public class Bugs implements Map<String, Bug>{
     private Map<String, Bug> bugs = new HashMap<>();
-    public void loadBugs(String pathBugs) {
+    public void loadBugsFromFile(String pathBugs) {
         try {
             String strBugs = readFile(pathBugs);
             ObjectMapper mapper = new ObjectMapper();

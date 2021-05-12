@@ -307,7 +307,7 @@ public class Commits implements Map<String, Commit> {
         //commits.get(modification.idCommit).modifications.put(modification.idCommit, modification.pathOld , modification.pathNew, modification);
     }
 
-    public void save(String pathCommits){
+    public void saveToFile(String pathCommits){
         File dir = new File(pathCommits);
         dir.mkdirs();
         for(Entry<String, Commit> entry : ProgressBar.wrap(commits.entrySet(), "saveCommits")) {
