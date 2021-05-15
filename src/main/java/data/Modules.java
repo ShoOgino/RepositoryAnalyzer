@@ -35,9 +35,9 @@ public class Modules implements Map<String, Module>{
 
     public void analyzeModules(Commits commits){
         identifyModificationsOnModule(commits);
-        //check();
         identifyCommitsParent(commits);
-        //identifyCommitsChild();
+        checkParent();
+        identifyCommitsChild();
         identifyCommitsHead();
         identifyCommitsRoot();
     }
@@ -58,6 +58,7 @@ public class Modules implements Map<String, Module>{
     }
     public void checkParent(){
         int countAll = 0;
+        int countYabai =0;
         int count = 0;
         for(Module module: ProgressBar.wrap(modules.values(), "testIdentifyParents")){
             for(Modification modification: module.modifications.values()){
@@ -66,6 +67,8 @@ public class Modules implements Map<String, Module>{
                 if(modification.parents.size()==0){
                     System.out.println(module.path);
                     System.out.println(modification.idCommit);
+                    if(Objects.equals(modification.type, "RENAME") | Objects.equals(modification.type, "COPY")) countYabai++;
+                    count++;
                     continue;
                 }
                 boolean isParentOk = false;
@@ -78,6 +81,7 @@ public class Modules implements Map<String, Module>{
                 }
                 if(isParentOk)continue;
                 count++;
+                if(Objects.equals(modification.type, "RENAME") | Objects.equals(modification.type, "COPY")) countYabai++;
                 System.out.println(module.path);
                 System.out.println(modification.idCommit);
                 System.out.println(modification.sourceOld);
@@ -88,6 +92,7 @@ public class Modules implements Map<String, Module>{
             }
         }
         System.out.println(countAll);
+        System.out.println(countYabai);
         System.out.println(count);
     }
 
@@ -140,10 +145,9 @@ public class Modules implements Map<String, Module>{
                         continue;
                     }
                     Set<String> idsCommitTarget = new HashSet<>();
-                    Module moduleBefore = modules.get(modificationTarget.pathOld);
+                    Module moduleBefore = modules.get(modificationTarget.pathNewParent);
                     if (moduleBefore != null) idsCommitTarget.addAll(moduleBefore.modifications.values().stream().map(a -> a.idCommit).collect(Collectors.toList()));
-                    Module moduleAfter = modules.get(modificationTarget.pathNew);
-                    if (moduleAfter != null) idsCommitTarget.addAll(moduleAfter.modifications.values().stream().map(a -> a.idCommit).collect(Collectors.toList()));
+
                     Commit commitNow = commits.get(modificationTarget.idCommitParent);
                     while (true) {
                         if (idsCommitTarget.contains(commitNow.id)) {

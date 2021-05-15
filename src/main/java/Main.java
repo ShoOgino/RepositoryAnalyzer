@@ -36,18 +36,22 @@ public class Main {
 		Bugs bugsAll = new Bugs();
 
 		try {
+			if(bean.loadHistoryFromFile){
+			}else {
+			}
+			//そのリポジトリに過去に存在したモジュール・コミット・バグをまとめる。
+			commitsAll.loadCommitsFromRepository(pathRepositoryMethod, idCommitHead, pathCommits);
+			commitsAll.loadCommitsFromFile(pathCommits);
+			modulesAll.analyzeModules(commitsAll);
+			bugsAll.loadBugsFromFile(pathBugs);
+
+			//コミット・モジュールデータをファイルからロード
+			//modulesAll.loadModulesFromFile(pathModules);
+			//commitsAll.loadCommitsFromFile(pathCommits);
+			//bugsAll.loadBugsFromFile(pathBugs);
 			if(bean.saveHistoryToFile) {
 				modulesAll.saveToFile(pathModules);
 				commitsAll.saveToFile(pathCommits);
-			}
-			if(bean.loadHistoryFromFile){
-				//コミット・モジュールデータをファイルからロード
-				commitsAll.loadCommitsFromFile(pathCommits);
-				modulesAll.loadModulesFromFile(pathModules);
-			}else {
-				//そのリポジトリに過去に存在したモジュール・コミット・バグをまとめる。
-				commitsAll.loadCommitsFromRepository(pathRepositoryMethod, idCommitHead, pathCommits);
-				modulesAll.analyzeModules(commitsAll);
 			}
 			if(bean.calcMetrics){
 				//個々のモジュールについてメトリクスを計測

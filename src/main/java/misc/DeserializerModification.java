@@ -14,10 +14,11 @@ public class DeserializerModification extends KeyDeserializer{
     public MultiKey<? extends String> deserializeKey(String key, DeserializationContext ctxt) throws IOException, JsonProcessingException {
         String stringKeys = key.substring(9);
         stringKeys = stringKeys.substring(0, stringKeys.length()-1);
-        String[] keys = stringKeys.split(",");
-        String idCommit=keys[0];
-        String pathOld=keys[1];
-        String pathNew=keys[2];
-        return new MultiKey(idCommit, pathOld, pathNew);
+        String[] keys = stringKeys.split(", ");
+        String idCommitParent=keys[0];
+        String idCommit=keys[1];
+        String pathOld=keys[2];
+        String pathNew=keys[3];
+        return new MultiKey(idCommitParent, idCommit, pathOld, pathNew);
     }
 }

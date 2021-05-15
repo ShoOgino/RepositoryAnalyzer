@@ -1,5 +1,6 @@
 package data;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.BufferedWriter;
@@ -26,6 +27,7 @@ public class Commit{
 			 OutputStreamWriter osw = new OutputStreamWriter(fos, StandardCharsets.UTF_8);
 			 BufferedWriter writer = new BufferedWriter(osw)){
 			ObjectMapper mapper = new ObjectMapper();
+			mapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
 			mapper.writeValue(writer, this);
 		} catch (IOException e) {
 			e.printStackTrace();

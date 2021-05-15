@@ -1,69 +1,36 @@
 package data;
 
-import com.fasterxml.jackson.annotation.JsonAutoDetect;
-import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.module.SimpleModule;
-import com.google.common.collect.Lists;
+import lombok.SneakyThrows;
 import me.tongfei.progressbar.ProgressBar;
-import misc.DeserializerModification;
-import org.apache.commons.collections4.keyvalue.MultiKey;
-import org.eclipse.jgit.api.Git;
-import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.diff.*;
-import org.eclipse.jgit.lib.*;
+import org.eclipse.jgit.lib.ObjectLoader;
+import org.eclipse.jgit.lib.ObjectReader;
+import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.revwalk.RevCommit;
-import org.eclipse.jgit.storage.file.FileRepositoryBuilder;
 import org.eclipse.jgit.treewalk.AbstractTreeIterator;
 import org.eclipse.jgit.treewalk.CanonicalTreeParser;
 import org.eclipse.jgit.treewalk.EmptyTreeIterator;
 
-import java.io.*;
-import java.nio.charset.StandardCharsets;
-import java.util.*;
-import java.util.stream.Collectors;
-import java.util.stream.StreamSupport;
+import java.io.IOException;
+import java.util.List;
+import java.util.Objects;
 
-import static util.FileUtil.findFiles;
-import static util.FileUtil.readFile;
+public class CommitsThread  extends Thread{
+    Repository repository;
+    List<RevCommit> revcommits;
+    String pathCommits;
 
-@JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
-public class Commits implements Map<String, Commit> {
-    private final TreeMap<String, Commit> commits = new TreeMap<>();
-    public void loadCommitsFromRepository(String pathRepository, String idCommitHead, String pathCommits) throws IOException,  GitAPIException {
-        Repository repository = new FileRepositoryBuilder()
-                .setGitDir(new File(pathRepository + "/.git"))
-                .build();
-        final Git git = new Git(repository);
+    public CommitsThread(Repository repository, List<RevCommit> revcommits, String pathCommits){
+        this.repository = repository;
+        this.revcommits = revcommits;
+        this.pathCommits = pathCommits;
+    }
 
-        AnyObjectId objectIdCommitHead = ObjectId.fromString(idCommitHead);
-        List<RevCommit> commitsAll = StreamSupport
-                .stream(git.log().add(objectIdCommitHead).call().spliterator(), false)
-                .collect(Collectors.toList());
-        //Collections.reverse(commitsAll);//past2future
-        Collections.shuffle(commitsAll);
-        Runtime r = Runtime.getRuntime();
-        int NOfCPU = r.availableProcessors();
-
-        List<CommitsThread> commitsThreads = new LinkedList<>();
-        List<List<RevCommit>> revcommitsSplitted = Lists.partition(commitsAll, commitsAll.size() / NOfCPU);
-        for (int i = 0; i < NOfCPU; i++) {
-            commitsThreads.add(new CommitsThread(repository, revcommitsSplitted.get(i), pathCommits));
-            commitsThreads.get(i).start();
-        }
-        for (int i = 0; i < NOfCPU; i++) {
-            try {
-                commitsThreads.get(i).join();
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        }
-
-/*
-
+    @SneakyThrows
+    public void run() {
+        System.out.println("thread started");
         //それぞれのコミットについて、変更内容を取得する。
-        for (RevCommit revCommit : ProgressBar.wrap(commitsAll, "loadCommitsFromRepository")) {
+        for (RevCommit revCommit : ProgressBar.wrap(revcommits, "loadCommitsFromRepository")) {
             Commit commit = new Commit();
             commit.id = revCommit.getName();
             commit.date = revCommit.getCommitTime();
@@ -129,26 +96,10 @@ public class Commits implements Map<String, Commit> {
                 }
                 commit.idParent2Modifications.put("0000000000000000000000000000000000000000", modifications);
             }else {
-                //if(0<revCommit.getParentCount()) {
-                //    RevCommit revCommitParent = revCommit.getParent(0);
-                //    Modifications modifications = test(repository, revCommit, revCommitParent);
-                //    commit.idParent2Modifications.put(revCommitParent.getName(), modifications);
-                //}
                 for(RevCommit revCommitParent: revCommit.getParents()) {
                     Modifications  modifications = test(repository, revCommit, revCommitParent);
                     commit.idParent2Modifications.put(revCommitParent.getName(), modifications);
                 }
-//
-//            for (int i = 0; i < revCommit.getParentCount(); i++) {
-//                if (i == 0) {
-//                    Modifications modifications = test(repository, revCommit, revCommit.getParent(i));
-//                    commit.idParent2Modifications.put(revCommit.getParent(i).getName(), modifications);
-//                } else {
-//                    Modifications modifications = new Modifications();
-//                    commit.idParent2Modifications.put(revCommit.getParent(i).getName(), modifications);
-//                }
-//            }
-//
                 for (RevCommit revCommitParentRenew : revCommit.getParents()) {
                     for (RevCommit revCommitParentRefer : revCommit.getParents()) {
                         if (Objects.equals(revCommitParentRenew.getName(), revCommitParentRefer.getName())) continue;
@@ -174,12 +125,11 @@ public class Commits implements Map<String, Commit> {
                     }
                 }
             }
-            //commit.save(pathCommits+"/"+commit.id+".json");
-            commits.put(commit.id, commit);
+        commit.save(pathCommits+"/"+commit.id+".json");
+        //commits.put(commit.id, commit);
         }
-   */
+        System.out.println("thread ends");
     }
-
 
     public Modifications test(Repository repository, RevCommit revCommit, RevCommit revCommitParent) throws IOException {
         Modifications modifications = new Modifications();
@@ -242,164 +192,5 @@ public class Commits implements Map<String, Commit> {
             // ハンドラに処理を移す
         }
         return modifications;
-    }
-
-    public void loadModifications(Repository repository, RevCommit revCommit) throws IOException {
-        DiffFormatter diffFormatter = new DiffFormatter(System.out);
-        diffFormatter.setRepository(repository);
-        diffFormatter.setDetectRenames(true);
-        diffFormatter.setDiffAlgorithm(new HistogramDiff());
-        ObjectReader reader = repository.newObjectReader();
-        //diffEntryを取得
-        List<DiffEntry> diffEntries;
-        AbstractTreeIterator oldTreeIter = 0 < revCommit.getParentCount() ? new CanonicalTreeParser(null, reader, revCommit.getParent(0).getTree()) : new EmptyTreeIterator();
-        AbstractTreeIterator newTreeIter = new CanonicalTreeParser(null, reader, revCommit.getTree());
-        diffEntries = diffFormatter.scan(oldTreeIter, newTreeIter);
-        //renameを検出。明示的。
-        RenameDetector rd = new RenameDetector(repository);
-        rd.setRenameScore(30);
-        rd.addAll(diffEntries);
-        diffEntries = rd.compute();
-
-        for (DiffEntry diffEntry : diffEntries) {
-            loadModification(repository, revCommit, diffEntry, diffFormatter);
-        }
-    }
-
-    public void loadModification(Repository repository, RevCommit revCommit, DiffEntry diffEntry, DiffFormatter diffFormatter) throws IOException {
-        Modification modification = new Modification();
-        modification.idCommit = revCommit.getName();
-        modification.date = revCommit.getCommitTime();
-        modification.author = revCommit.getAuthorIdent().getName();
-        modification.isMerge = revCommit.getParentCount() > 1;
-        modification.type=diffEntry.getChangeType().toString();
-        modification.pathOld=diffEntry.getOldPath();
-        modification.pathNew=diffEntry.getNewPath();
-        //コミット直前のソースコードを取得
-        if(diffEntry.getOldId().name().equals("0000000000000000000000000000000000000000")){
-            modification.sourceOld = null;
-        }else{
-            ObjectLoader loader = repository.open(diffEntry.getOldId().toObjectId());
-            modification.sourceOld = new String(loader.getBytes());
-        }
-        //コミット直後のソースコードを取得
-        if(diffEntry.getNewId().name().equals("0000000000000000000000000000000000000000")){
-            modification.sourceNew = null;
-        }else{
-            ObjectLoader loader = repository.open(diffEntry.getNewId().toObjectId());
-            modification.sourceNew = new String(loader.getBytes());
-        }
-
-        for(Edit changeOriginal : diffFormatter.toFileHeader(diffEntry).toEditList()){
-            Change change = new Change();
-            for(int i = changeOriginal.getBeginA(); i< changeOriginal.getEndA(); i++){
-                change.before.add(i);
-            }
-            for(int i = changeOriginal.getBeginB(); i< changeOriginal.getEndB(); i++){
-                change.after.add(i);
-            }
-            modification.changes.add(change);
-        }
-
-        //commits.get(modification.idCommit).modifications.put(modification.idCommit, modification.pathOld , modification.pathNew, modification);
-    }
-
-    public void saveToFile(String pathCommits){
-        File dir = new File(pathCommits);
-        dir.mkdirs();
-        for(Entry<String, Commit> entry : ProgressBar.wrap(commits.entrySet(), "saveCommits")) {
-            entry.getValue().save(pathCommits+"/"+entry.getKey()+".json");
-        }
-    }
-
-    @Override
-    public int size() {
-        return commits.size();
-    }
-
-    @Override
-    public boolean isEmpty() {
-        return commits.isEmpty();
-    }
-
-    @Override
-    public boolean containsKey(Object key) {
-        return commits.containsKey(key);
-    }
-
-    @Override
-    public boolean containsValue(Object value) {
-        return commits.containsValue(value);
-    }
-
-    @Override
-    public Commit get(Object key) {
-        return commits.get(key);
-    }
-
-    @Override
-    public Commit put(String key, Commit value) {
-        return commits.put(key, value);
-    }
-
-    @Override
-    public Commit remove(Object key) {
-        return commits.remove(key);
-    }
-
-    @Override
-    public void putAll(Map<? extends String, ? extends Commit> m) {
-        commits.putAll(m);
-    }
-
-    @Override
-    public void clear() {
-        commits.clear();
-    }
-
-    @Override
-    public Set<String> keySet() {
-        return commits.keySet();
-    }
-
-    @Override
-    public Collection<Commit> values() {
-        return commits.values();
-    }
-
-    @Override
-    public Set<Entry<String, Commit>> entrySet() {
-        return commits.entrySet();
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        return commits.equals(o);
-    }
-
-    @Override
-    public int hashCode() {
-        return commits.hashCode();
-    }
-
-    public void loadCommitsFromFile(String pathCommits) {
-        List<String> paths = findFiles(pathCommits, "json");
-        int count=0;
-        for(String path: paths) {
-            //for(String path: ProgressBar.wrap(paths, "loadCommitsFromFile")) {
-            System.out.println(String.valueOf(count)+" "+path);
-            try {
-                String strFile = readFile(path);
-                ObjectMapper mapper = new ObjectMapper();
-                SimpleModule simpleModule = new SimpleModule();
-                simpleModule.addKeyDeserializer(MultiKey.class, new DeserializerModification());
-                mapper.registerModule(simpleModule);
-                Commit commit = mapper.readValue(strFile, new TypeReference<Commit>() {});
-                commits.put(commit.id, commit);
-                count++;
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
     }
 }

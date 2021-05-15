@@ -11,6 +11,7 @@ import me.tongfei.progressbar.ProgressBar;
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -24,12 +25,14 @@ public class FileUtil {
     public static String readFile(final String path){
         String value=null;
         try {
-            value = Files.lines(Paths.get(path), Charset.forName("UTF-8")).collect(Collectors.joining(System.getProperty("line.separator")));
+            //File file = new File(path);
+            //if(!file.exists())System.out.println(path);
+            //ファイルは存在しているのに、中身の文字列を読み込めない。
+            value = Files.lines(Paths.get(path), StandardCharsets.UTF_8).collect(Collectors.joining(System.getProperty("line.separator")));
         } catch (IOException e) {
             e.printStackTrace();
-        } finally{
-            return value;
         }
+        return value;
     }
     public static List<String> findFiles(String dirRoot, String ext, String extIgnore) {
         List<String> pathsFile = new ArrayList<String>();
