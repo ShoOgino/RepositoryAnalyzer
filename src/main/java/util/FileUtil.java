@@ -25,9 +25,6 @@ public class FileUtil {
     public static String readFile(final String path){
         String value=null;
         try {
-            //File file = new File(path);
-            //if(!file.exists())System.out.println(path);
-            //ファイルは存在しているのに、中身の文字列を読み込めない。
             value = Files.lines(Paths.get(path), StandardCharsets.UTF_8).collect(Collectors.joining(System.getProperty("line.separator")));
         } catch (IOException e) {
             e.printStackTrace();

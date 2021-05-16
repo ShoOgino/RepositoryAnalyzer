@@ -37,7 +37,7 @@ public class Modules implements Map<String, Module>{
         identifyModificationsOnModule(commits);
         identifyCommitsParent(commits);
         checkParent();
-        identifyCommitsChild();
+        //identifyCommitsChild();
         identifyCommitsHead();
         identifyCommitsRoot();
     }
@@ -164,7 +164,7 @@ public class Modules implements Map<String, Module>{
                             break;
                         }
                         commitNow = commits.get(commitNow.idParentMaster);
-                        if (commitNow == null) break;
+                        if(commitNow==null)break;
                     }
                 }
             }
@@ -173,7 +173,6 @@ public class Modules implements Map<String, Module>{
             for(Modification modificationTemp: modificationsComplete) {
                 moduleTarget.modifications.put(modificationTemp.idCommitParent, modificationTemp.idCommit, modificationTemp.pathOld, modificationTemp.pathNew, modificationTemp);
             }
-
              */
         }
     }

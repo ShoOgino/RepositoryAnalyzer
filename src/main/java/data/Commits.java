@@ -300,7 +300,6 @@ public class Commits implements Map<String, Commit> {
             }
             modification.changes.add(change);
         }
-
         //commits.get(modification.idCommit).modifications.put(modification.idCommit, modification.pathOld , modification.pathNew, modification);
     }
 
@@ -385,9 +384,7 @@ public class Commits implements Map<String, Commit> {
     public void loadCommitsFromFile(String pathCommits) {
         List<String> paths = findFiles(pathCommits, "json");
         int count=0;
-        for(String path: paths) {
-            //for(String path: ProgressBar.wrap(paths, "loadCommitsFromFile")) {
-            System.out.println(String.valueOf(count)+" "+path);
+        for(String path: ProgressBar.wrap(paths, "loadCommitsFromFile")) {
             try {
                 String strFile = readFile(path);
                 ObjectMapper mapper = new ObjectMapper();
