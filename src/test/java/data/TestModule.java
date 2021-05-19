@@ -1,9 +1,12 @@
 package data;
 
 import org.eclipse.jgit.api.errors.GitAPIException;
+import org.eclipse.jgit.lib.Repository;
+import org.eclipse.jgit.storage.file.FileRepositoryBuilder;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
+import java.io.File;
 import java.io.IOException;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -15,7 +18,19 @@ public class TestModule {
     public static String[] commitEdgesFile =  {"dfbdc456d8645fc0c310b5e15cf8d25d8ff7f84b","0cc8d32aff8ce91f71d2cdac8f3e362aff747ae7"};
 
     public static String pathRepositoryMethod = pathProject+"/repositoryMethod";
+    public static Repository repositoryMethod;
     public static String pathRepositoryFile = pathProject+"/repositoryFile";
+    public static Repository repositoryFile;
+
+    static {
+        try {
+            repositoryFile = new FileRepositoryBuilder().setGitDir(new File(pathRepositoryFile + "/.git")).build();
+            repositoryMethod =  new FileRepositoryBuilder().setGitDir(new File(pathRepositoryMethod + "/.git")).build();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
     public static String pathDataset = pathProject+"/datasets/"+ commitEdgesMethod[0].substring(0,8)+"_"+ commitEdgesMethod[1].substring(0,8)+".csv";
     public static String pathModules = pathProject+"/modules.json";
     public static String pathCommits = pathProject+"/commits";
@@ -25,11 +40,14 @@ public class TestModule {
     public static Modules modulesAll = new Modules();
     public static Bugs bugsAll = new Bugs();
 
+    public TestModule() throws IOException {
+    }
+
     @BeforeAll
     static public void setUp() throws GitAPIException, IOException {
-        util.RepositoryUtil.checkoutRepository(pathRepositoryFile, commitEdgesFile[1]);
-        util.RepositoryUtil.checkoutRepository(pathRepositoryMethod, commitEdgesMethod[1]);
-        commitsAll.loadCommitsFromRepository(pathRepositoryMethod, idCommitHead, pathCommits);
+        util.RepositoryUtil.checkoutRepository(repositoryFile, commitEdgesFile[1]);
+        util.RepositoryUtil.checkoutRepository(repositoryMethod, commitEdgesMethod[1]);
+        commitsAll.loadCommitsFromRepository(repositoryMethod, idCommitHead, pathCommits);
         modulesAll.analyzeModules(commitsAll);
         bugsAll.loadBugsFromFile(pathBugs);
     }

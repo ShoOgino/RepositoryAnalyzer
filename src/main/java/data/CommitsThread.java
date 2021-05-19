@@ -37,11 +37,11 @@ public class CommitsThread  extends Thread{
             commit.isMerge = revCommit.getParentCount() > 1;
             commit.idParentMaster = revCommit.getParentCount() == 0 ? "0000000000000000000000000000000000000000" : revCommit.getParent(0).getName();
             if(revCommit.getParentCount()==0){
-                Modifications modifications = test(repository, revCommit, null);
+                Modifications modifications = calcModificationsBetweenCommits(repository, revCommit, null);
                 commit.idParent2Modifications.put("0000000000000000000000000000000000000000", modifications);
             }else {
                 for (RevCommit revCommitParent : revCommit.getParents()) {
-                    Modifications modifications = test(repository, revCommit, revCommitParent);
+                    Modifications modifications = calcModificationsBetweenCommits(repository, revCommit, revCommitParent);
                     commit.idParent2Modifications.put(revCommitParent.getName(), modifications);
                 }
             }
@@ -76,7 +76,7 @@ public class CommitsThread  extends Thread{
         System.out.println("thread ends");
     }
 
-    public Modifications test(Repository repository, RevCommit revCommit, RevCommit revCommitParent) throws IOException {
+    public Modifications calcModificationsBetweenCommits(Repository repository, RevCommit revCommit, RevCommit revCommitParent) throws IOException {
         Modifications modifications = new Modifications();
         try(DiffFormatter diffFormatter = new DiffFormatter(System.out)) {
             diffFormatter.setRepository(repository);

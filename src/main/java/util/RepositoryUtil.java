@@ -3,6 +3,7 @@ package util;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.ResetCommand;
 import org.eclipse.jgit.api.errors.*;
+import org.eclipse.jgit.lib.Repository;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -12,7 +13,8 @@ import java.nio.charset.Charset;
 import java.util.ArrayList;
 
 public class RepositoryUtil {
-    public static void checkoutRepository(String pathRepository, String idCommit) throws IOException, RefAlreadyExistsException, RefNotFoundException, InvalidRefNameException, CheckoutConflictException, GitAPIException {
+    public static void checkoutRepository(Repository repository, String idCommit) throws IOException, RefAlreadyExistsException, RefNotFoundException, InvalidRefNameException, CheckoutConflictException, GitAPIException {
+        /*
         //repositoryについて、そのコミットidへcheckout。
         System.out.println("checkout repository");
         ProcessBuilder pbCheckout = new ProcessBuilder("git", "checkout", "-f", idCommit );
@@ -28,12 +30,11 @@ public class RepositoryUtil {
                 System.out.println(line);
             }
         }
-        /*
+         */
         System.out.println("chackout at "+idCommit+"...");
-        Git git = Git.open(new File(pathRepository));
+        Git git = new Git(repository);
         git.clean().setForce(true).call();
         git.reset().setMode(ResetCommand.ResetType.HARD).call();
         git.checkout().setName(idCommit).call();
-         */
     }
 }

@@ -1,8 +1,11 @@
 import data.*;
 import misc.ArgBean;
+import org.eclipse.jgit.lib.Repository;
+import org.eclipse.jgit.storage.file.FileRepositoryBuilder;
 import org.kohsuke.args4j.CmdLineException;
 import org.kohsuke.args4j.CmdLineParser;
 
+import java.io.File;
 import java.io.IOException;
 
 public class Main {
@@ -25,7 +28,9 @@ public class Main {
 		final String[] commitEdgesMethod = bean.commitEdgesMethod;
 		final String[] commitEdgesFile = bean.commitEdgesFile;
 		String pathRepositoryMethod = pathProject+"/repositoryMethod";
+		Repository repositoryMethod = new FileRepositoryBuilder().setGitDir(new File(pathRepositoryMethod + "/.git")).build();
 		String pathRepositoryFile = pathProject+"/repositoryFile";
+		Repository repositoryFile = new FileRepositoryBuilder().setGitDir(new File(pathRepositoryFile + "/.git")).build();
 		String pathDataset = pathProject+"/datasets/"+ commitEdgesMethod[0].substring(0,8)+"_"+ commitEdgesMethod[1].substring(0,8)+".csv";
 		//String pathDataset = pathProject+"/datasets/"+ commitEdgesMethod[0].substring(0,8)+"_"+ commitEdgesMethod[1].substring(0,8)+"_"+commitEdgesMethod[2].substring(0,8)+".csv";
 		String pathModules = pathProject+"/modules";
@@ -37,27 +42,23 @@ public class Main {
 
 		try {
 			if(bean.loadHistoryFromFile){
+				commitsAll.loadCommitsFromFile(pathCommits);
+				modulesAll.loadModulesFromFile(pathModules);
 			}else {
+				commitsAll.loadCommitsFromRepository(repositoryMethod, idCommitHead, pathCommits);
+				commitsAll.loadCommitsFromFile(pathCommits);
+				modulesAll.analyzeModules(commitsAll);
 			}
-			//そのリポジトリに過去に存在したモジュール・コミット・バグをまとめる。
-			commitsAll.loadCommitsFromRepository(pathRepositoryMethod, idCommitHead, pathCommits);
-			commitsAll.loadCommitsFromFile(pathCommits);
-			modulesAll.analyzeModules(commitsAll);
 			bugsAll.loadBugsFromFile(pathBugs);
-
-			//コミット・モジュールデータをファイルからロード
-			//modulesAll.loadModulesFromFile(pathModules);
-			//commitsAll.loadCommitsFromFile(pathCommits);
-			//bugsAll.loadBugsFromFile(pathBugs);
 			if(bean.saveHistoryToFile) {
 				modulesAll.saveToFile(pathModules);
-				commitsAll.saveToFile(pathCommits);
 			}
+
 			if(bean.calcMetrics){
 				//個々のモジュールについてメトリクスを計測
 				Modules modulesTarget = new Modules();
-				modulesTarget.identifyTargetModules(modulesAll, pathRepositoryMethod, commitEdgesMethod);
-				modulesTarget.calcCodeMetrics(pathRepositoryFile, commitEdgesFile, pathRepositoryMethod, commitEdgesMethod);
+				modulesTarget.identifyTargetModules(modulesAll, repositoryMethod, commitEdgesMethod);
+				modulesTarget.calcCodeMetrics(repositoryFile, commitEdgesFile, repositoryMethod, commitEdgesMethod);
 				modulesTarget.calcProcessMetrics(modulesAll, commitsAll, bugsAll, commitEdgesMethod);
 				modulesTarget.saveMetricsAsRecords(pathDataset);
 			}

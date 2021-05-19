@@ -1,5 +1,6 @@
 package data;
 
+import java.io.IOException;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -11,8 +12,9 @@ import ch.uzh.ifi.seal.changedistiller.model.classifiers.ChangeType;
 import ch.uzh.ifi.seal.changedistiller.model.classifiers.EntityType;
 import ch.uzh.ifi.seal.changedistiller.model.entities.SourceCodeChange;
 import ast.*;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.Data;
-import lombok.NoArgsConstructor;
 import misc.DoubleConverter;
 import net.sf.jsefa.csv.annotation.CsvDataType;
 import net.sf.jsefa.csv.annotation.CsvField;
@@ -20,101 +22,149 @@ import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.jdt.core.dom.AST;
 import org.eclipse.jdt.core.dom.ASTParser;
 import org.eclipse.jdt.core.dom.CompilationUnit;
+import org.eclipse.jgit.lib.ObjectLoader;
+import org.eclipse.jgit.lib.Repository;
+import org.eclipse.jgit.revwalk.RevCommit;
+import org.eclipse.jgit.revwalk.RevTree;
+import org.eclipse.jgit.treewalk.TreeWalk;
+import org.eclipse.jgit.treewalk.filter.PathSuffixFilter;
 
-import static util.FileUtil.readFile;
-
+@JsonIgnoreProperties(ignoreUnknown=true)
 @CsvDataType()
 @Data
 public class Module {
+	@JsonIgnore
 	public String id="";
 	@CsvField(pos = 1)
 	public String path;
+	@JsonIgnore
+	public String source;
 	public Modifications modifications;
 	public ArrayList<String> commitsHead;
 	public ArrayList<String> commitsRoot;
+	@JsonIgnore
 	@CsvField(pos = 2)
 	int isBuggy=0;
 	@CsvField(pos = 3)
+	@JsonIgnore
 	int fanIn=0;
 	@CsvField(pos = 4)
+	@JsonIgnore
 	int fanOut=0;
 	@CsvField(pos = 5)
+	@JsonIgnore
 	int parameters=0;
 	@CsvField(pos = 6)
+	@JsonIgnore
 	int localVar=0;
 	@CsvField(pos = 7, converterType = DoubleConverter.class)
+	@JsonIgnore
 	double commentRatio=0;
+	@JsonIgnore
 	@CsvField(pos = 8)
 	long countPath=0;
 	@CsvField(pos = 9)
+	@JsonIgnore
 	int complexity=0;
 	@CsvField(pos = 10)
+	@JsonIgnore
 	int execStmt=0;
 	@CsvField(pos = 11)
+	@JsonIgnore
 	int maxNesting=0;
 
 	//process metrics
 	@CsvField(pos = 12)
+	@JsonIgnore
 	int moduleHistories=0;
 	@CsvField(pos = 13)
+	@JsonIgnore
 	int authors = 0;
 	@CsvField(pos = 14)
+	@JsonIgnore
 	int stmtAdded=0;
 	@CsvField(pos = 15)
+	@JsonIgnore
 	int maxStmtAdded=0;
 	@CsvField(pos = 16, converterType = DoubleConverter.class)
+	@JsonIgnore
 	double avgStmtAdded=0;
 	@CsvField(pos = 17)
+	@JsonIgnore
 	int stmtDeleted=0;
 	@CsvField(pos = 18)
+	@JsonIgnore
 	int maxStmtDeleted=0;
 	@CsvField(pos = 19, converterType = DoubleConverter.class)
+	@JsonIgnore
 	double avgStmtDeleted=0;
 	@CsvField(pos = 20)
+	@JsonIgnore
 	int churn=0;
 	@CsvField(pos = 21)
+	@JsonIgnore
 	int maxChurn=0;
 	@CsvField(pos = 22, converterType = DoubleConverter.class)
+	@JsonIgnore
 	double avgChurn=0;
 	@CsvField(pos = 23)
+	@JsonIgnore
 	int decl=0;
 	@CsvField(pos = 24)
+	@JsonIgnore
 	int cond=0;
 	@CsvField(pos = 25)
+	@JsonIgnore
 	int elseAdded=0;
 	@CsvField(pos = 26)
+	@JsonIgnore
 	int elseDeleted=0;
 
-	@CsvField(pos = 27)
+	//@CsvField(pos = 27)
+	@JsonIgnore
 	int hasBeenBuggy=0;
 
 	//@CsvField(pos = 27)
+	@JsonIgnore
 	int LOC = 0;
 	//@CsvField(pos = 28)
+	@JsonIgnore
 	int addLOC = 0;
 	//@CsvField(pos = 29)
+	@JsonIgnore
 	int delLOC = 0;
 	//@CsvField(pos = 30)
+	@JsonIgnore
 	int devMinor    = 0;
 	//@CsvField(pos = 31)
+	@JsonIgnore
 	int devMajor    = 0;
 	//@CsvField(pos = 32)
+	@JsonIgnore
 	double ownership   = 0;
 	//@CsvField(pos = 33)
+	@JsonIgnore
 	int fixChgNum = 0;
 	//@CsvField(pos = 34)
+	@JsonIgnore
 	int pastBugNum  = 0;
 	//@CsvField(pos = 35)
+	@JsonIgnore
 	int bugIntroNum = 0;
 	//@CsvField(pos = 36)
+	@JsonIgnore
 	int logCoupNum  = 0;
 	//@CsvField(pos = 37)
+	@JsonIgnore
 	int period      = 0;
 	//@CsvField(pos = 38)
+	@JsonIgnore
 	double avgInterval = 0;
 	//@CsvField(pos = 39)
+	@JsonIgnore
 	int maxInterval = 0;
 	//@CsvField(pos = 40)
+	@JsonIgnore
 	int minInterval = 0;
 
 	public Module() {
@@ -131,29 +181,29 @@ public class Module {
 		this.commitsRoot = new ArrayList<>();
 	}
 
-	public void calcMaxNesting(String pathRepository) {
-		CompilationUnit unit = getCompilationUnit(pathRepository);
+	public void calcMaxNesting() {
+		CompilationUnit unit = calcCompilationUnit();
 		VisitorMaxNesting visitorMaxNesting = new VisitorMaxNesting();
 		unit.accept(visitorMaxNesting);
 		maxNesting = visitorMaxNesting.maxNesting;
 	}
 
-	public void calcExecStmt(String pathRepository) {
-		CompilationUnit unit =getCompilationUnit(pathRepository);
+	public void calcExecStmt() {
+		CompilationUnit unit = calcCompilationUnit();
 		VisitorExecStmt visitorExecStmt = new VisitorExecStmt();
 		unit.accept(visitorExecStmt);
 		execStmt = visitorExecStmt.execStmt;
 	}
 
-	public  void calcComplexity(String pathRepository) {
-		CompilationUnit unit =getCompilationUnit(pathRepository);
+	public  void calcComplexity() {
+		CompilationUnit unit = calcCompilationUnit();
 		VisitorComplexity visitorComplexity = new VisitorComplexity();
 		unit.accept(visitorComplexity);
 		complexity = visitorComplexity.complexity;
 	}
 
-	public void calcCountPath(String pathRepository) {
-		CompilationUnit unit =getCompilationUnit(pathRepository);
+	public void calcCountPath() {
+		CompilationUnit unit = calcCompilationUnit();
 		VisitorCountPath visitorCountPath = new VisitorCountPath();
 		unit.accept(visitorCountPath);
 		long countPath=1;
@@ -163,10 +213,9 @@ public class Module {
 		this.countPath = countPath;
 	}
 
-	public void calcCommentRatio(String pathRepository) {
+	public void calcCommentRatio() {
 		String regex  = "\n|\r\n";
-		String sourceMethod = readFile(pathRepository +"/"+path);
-		String[] linesMethod = sourceMethod.split(regex, 0);
+		String[] linesMethod = this.source.split(regex, 0);
 
 		int countLineCode=0;
 		int countLineComment=0;
@@ -193,22 +242,22 @@ public class Module {
 		commentRatio = (float) countLineComment/ (float)countLineCode;
 	}
 
-	public  void calcLocalVar(String pathRepository) {
-		CompilationUnit unit =getCompilationUnit(pathRepository);
+	public  void calcLocalVar() {
+		CompilationUnit unit = calcCompilationUnit();
 		VisitorLocalVar visitorLocalVar = new VisitorLocalVar();
 		unit.accept(visitorLocalVar);
 		localVar = visitorLocalVar.NOVariables;
 	}
 
-	public  void calcParameters(String pathRepository) {
-		CompilationUnit unit =getCompilationUnit(pathRepository);
+	public  void calcParameters() {
+		CompilationUnit unit = calcCompilationUnit();
 		data.VisitorMethodDeclaration visitorMethodDeclaration = new data.VisitorMethodDeclaration();
 		unit.accept(visitorMethodDeclaration);
 		parameters = visitorMethodDeclaration.parameters;
 	}
 
-	public  void calcFanOut(String pathRepository) {
-		CompilationUnit unit =getCompilationUnit(pathRepository);
+	public  void calcFanOut() {
+		CompilationUnit unit = calcCompilationUnit();
 		VisitorFanout visitor = new VisitorFanout();
 		unit.accept(visitor);
 		this.fanOut = visitor.fanout;
@@ -651,17 +700,27 @@ public class Module {
 	}
 
 	public void calcIsBuggy(Commits commitsAll, Bugs bugsAll,  String[] intervalCommit) {
-		List<BugAtomic> bugAtomics = bugsAll.identifyAtomicBugs(path);
-		for(BugAtomic bugAtomic: bugAtomics) {
-			Commit commitFix = commitsAll.get(bugAtomic.idCommitFix);
-			Commit commitTimePoint = commitsAll.get(intervalCommit[1]);
-			//todo: Commit commitLastBugFix = commitsAll.get(intervalCommit[2]);
-			for (String idCommit : bugAtomic.idsCommitInduce) {
-				Commit commitInduce = commitsAll.get(idCommit);
-				if (commitInduce.date < commitTimePoint.date & commitTimePoint.date < commitFix.date)
-					isBuggy = 1;
+		for(String oneOfPath: calcPaths()) {
+			List<BugAtomic> bugAtomics = bugsAll.identifyAtomicBugs(oneOfPath);
+			for (BugAtomic bugAtomic : bugAtomics) {
+				Commit commitFix = commitsAll.get(bugAtomic.idCommitFix);
+				Commit commitTimePoint = commitsAll.get(intervalCommit[1]);
+				//todo: Commit commitLastBugFix = commitsAll.get(intervalCommit[2]);
+				for (String idCommit : bugAtomic.idsCommitInduce) {
+					Commit commitInduce = commitsAll.get(idCommit);
+					if (commitInduce.date < commitTimePoint.date & commitTimePoint.date < commitFix.date)
+						isBuggy = 1;
+				}
 			}
 		}
+	}
+
+	public Set<String> calcPaths(){
+		Set<String> paths = new HashSet<>();
+		for(Modification modification: this.modifications.values()){
+			if(!Objects.equals(modification.type, "DELETE")) paths.add(modification.pathNew);
+		}
+		return paths;
 	}
 
 	public void calcHasBeenBuggy(Commits commitsAll, Bugs bugsAll, String[] intervalCommit) {
@@ -676,19 +735,26 @@ public class Module {
 		}
 	}
 
-
-	public CompilationUnit getCompilationUnit(String pathRepository) {
-		String sourceMethod = readFile( pathRepository+"/" + path);
-		String sourceClass = "public class Dummy{"+sourceMethod+"}";
+	public CompilationUnit calcCompilationUnit() {
+		String sourceClass = "public class Dummy{"+this.source+"}";
 		ASTParser parser = ASTParser.newParser(AST.JLS4);
 		parser.setSource(sourceClass.toCharArray());
 		CompilationUnit unit =(CompilationUnit) parser.createAST(new NullProgressMonitor());
 		return unit;
 	}
 
-	public String readSourceCode(String pathRepository){
-		String sourceMethod = readFile( pathRepository+"/" + path);
-		return sourceMethod;
+	public void loadSrcFromRepository(Repository repositoryMethod, String idCommit) throws IOException {
+		RevCommit revCommit = repositoryMethod.parseCommit(repositoryMethod.resolve(idCommit));
+		RevTree tree = revCommit.getTree();
+		try (TreeWalk treeWalk = new TreeWalk(repositoryMethod)) {
+			treeWalk.addTree(tree);
+			treeWalk.setRecursive(true);
+			treeWalk.setFilter(PathSuffixFilter.create(path));
+			while (treeWalk.next()) {
+				ObjectLoader loader = repositoryMethod.open(treeWalk.getObjectId(0));
+				this.source = new String(loader.getBytes());
+			}
+		}
 	}
 
 	public  List<SourceCodeChange> identifyChanges(Modification modification){

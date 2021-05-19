@@ -18,7 +18,16 @@ import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.jdt.core.JavaCore;
 import org.eclipse.jdt.core.dom.AST;
 import org.eclipse.jdt.core.dom.ASTParser;
+import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.errors.GitAPIException;
+import org.eclipse.jgit.lib.AnyObjectId;
+import org.eclipse.jgit.lib.ObjectId;
+import org.eclipse.jgit.lib.Repository;
+import org.eclipse.jgit.revwalk.RevCommit;
+import org.eclipse.jgit.revwalk.RevTree;
+import org.eclipse.jgit.storage.file.FileRepositoryBuilder;
+import org.eclipse.jgit.treewalk.TreeWalk;
+import org.eclipse.jgit.treewalk.filter.PathSuffixFilter;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
@@ -35,9 +44,10 @@ public class Modules implements Map<String, Module>{
 
     public void analyzeModules(Commits commits){
         identifyModificationsOnModule(commits);
-        identifyCommitsParent(commits);
+        identifyCommitParent(commits);
+        completeCommitHistory();
         checkParent();
-        //identifyCommitsChild();
+        checkChildren();
         identifyCommitsHead();
         identifyCommitsRoot();
     }
@@ -56,6 +66,7 @@ public class Modules implements Map<String, Module>{
             else System.out.println(module.path);
         }
     }
+
     public void checkParent(){
         int countAll = 0;
         int countYabai =0;
@@ -71,11 +82,10 @@ public class Modules implements Map<String, Module>{
                     count++;
                     continue;
                 }
-                boolean isParentOk = false;
-                List<Modification> modificationsBefore = module.modifications.findFromIdCommit(modification.parents.get(0));
-                for(Modification modificationBefore: modificationsBefore){
-                    if(Objects.equals(modification.sourceOld, modificationBefore.sourceNew)){
-                        isParentOk=true;
+                boolean isParentOk = true;
+                for(Modification modificationParent: modification.parentsModification.values()){
+                    if(!Objects.equals(modification.sourceOld, modificationParent.sourceNew)){
+                        isParentOk=false;
                         break;
                     }
                 }
@@ -85,7 +95,7 @@ public class Modules implements Map<String, Module>{
                 System.out.println(module.path);
                 System.out.println(modification.idCommit);
                 System.out.println(modification.sourceOld);
-                for(Modification modificationBefore: modificationsBefore) {
+                for(Modification modificationBefore: modification.parentsModification.values()) {
                     System.out.println(modificationBefore.idCommit);
                     System.out.println(modificationBefore.sourceNew);
                 }
@@ -95,6 +105,49 @@ public class Modules implements Map<String, Module>{
         System.out.println(countYabai);
         System.out.println(count);
     }
+
+
+    public void checkChildren(){
+        int countAll = 0;
+        int countYabai =0;
+        int count = 0;
+        for(Module module: ProgressBar.wrap(modules.values(), "testIdentifyChildlen")){
+            for(Modification modification: module.modifications.values()){
+                if(modification.type.equals("DELETE"))continue;;
+                countAll++;
+                /*
+                if(modification.children.size()==0){
+                    System.out.println(module.path);
+                    System.out.println(modification.idCommit);
+                    if(Objects.equals(modification.type, "RENAME") | Objects.equals(modification.type, "COPY")) countYabai++;
+                    count++;
+                    continue;
+                }
+                 */
+                boolean isChildOK = true;
+                for(Modification child: modification.childrenModification.values()){
+                    if(!Objects.equals(modification.sourceNew, child.sourceOld)){
+                        isChildOK=false;
+                        break;
+                    }
+                }
+                if(isChildOK)continue;
+                count++;
+                if(Objects.equals(modification.type, "RENAME") | Objects.equals(modification.type, "COPY")) countYabai++;
+                System.out.println(module.path);
+                System.out.println(modification.idCommit);
+                System.out.println(modification.sourceNew);
+                for(Modification modificationAfter: modification.childrenModification.values()) {
+                    System.out.println(modificationAfter.idCommit);
+                    System.out.println(modificationAfter.sourceOld);
+                }
+            }
+        }
+        System.out.println(countAll);
+        System.out.println(countYabai);
+        System.out.println(count);
+    }
+
 
     public void identifyModificationsOnModule(Commits commits){
         for(Commit commit: ProgressBar.wrap(commits.values(), "identifyModificationsOnModule")) {
@@ -122,7 +175,7 @@ public class Modules implements Map<String, Module>{
 
 
     //個々のモジュールについて、そのモジュールに対するコミットについて、親子関係を解析する。親の方向。
-    public void identifyCommitsParent(Commits commits){
+    public void identifyCommitParent(Commits commits){
         for(String pathModule: ProgressBar.wrap(modules.keySet(),"identifyCommitsParent")) {
             Module moduleTarget = modules.get(pathModule);
             Queue<Modification> modificationsTarget = new ArrayDeque<>(moduleTarget.getModifications().values());
@@ -131,17 +184,14 @@ public class Modules implements Map<String, Module>{
             while(0 < modificationsTarget.size()) {
                 modificationTarget = modificationsTarget.poll();
                 moduleTarget.modifications.put(modificationTarget.idCommitParent, modificationTarget.idCommit, modificationTarget.pathOld, modificationTarget.pathNew, modificationTarget);
-                if (modificationTarget.type.equals("ADD") & !modificationTarget.isMerge) {//親が存在しない。
+                if (modificationTarget.type.equals("ADD")) {//親が存在しない。
                 } else {//親が存在する。
                     if(!modificationTarget.parentsModification.isEmpty()){//親特定済み
-                        //if(Objects.equals(modificationTarget.type, "RENAME")
-                        //| Objects.equals(modificationTarget.type, "COPY")){
-                            Modifications modifications = new Modifications();
-                            modificationTarget.loadAncestors(modifications);
-                            for (Entry<MultiKey<? extends String>, Modification> m : modifications.entrySet()) {
-                                moduleTarget.modifications.put(m.getKey(), m.getValue());
-                            }
-                        //}
+                        Modifications modifications = new Modifications();
+                        modificationTarget.loadAncestors(modifications);
+                        for (Entry<MultiKey<? extends String>, Modification> m : modifications.entrySet()) {
+                            moduleTarget.modifications.put(m.getKey(), m.getValue());
+                        }
                         continue;
                     }
                     Set<String> idsCommitTarget = new HashSet<>();
@@ -151,63 +201,50 @@ public class Modules implements Map<String, Module>{
                     Commit commitNow = commits.get(modificationTarget.idCommitParent);
                     while (true) {
                         if (idsCommitTarget.contains(commitNow.id)) {
+                            boolean isOK=false;
                             for (Modifications modifications : commitNow.idParent2Modifications.values()) {
                                 for (Modification modification : modifications.values()) {
                                     if (Objects.equals(modificationTarget.pathNewParent, modification.pathNew)) {
                                         modificationTarget.parentsModification.put(modification.idCommitParent, modification.idCommit, modification.pathOld, modification.pathNew, modification);
                                         modificationTarget.parents.add(modification.idCommit);
+                                        modification.childrenModification.put(modificationTarget.idCommitParent, modificationTarget.idCommit, modificationTarget.pathOld, modificationTarget.pathNew, modificationTarget);
+                                        modification.children.add(modificationTarget.idCommit);
                                         modificationsTarget.add(modification);
-                                        break;
+                                        isOK = true;
                                     }
                                 }
                             }
-                            break;
+                            if(isOK)break;
                         }
                         commitNow = commits.get(commitNow.idParentMaster);
                         if(commitNow==null)break;
                     }
                 }
             }
-            /*
-            modules.get(pathModule).modifications.clear();
-            for(Modification modificationTemp: modificationsComplete) {
-                moduleTarget.modifications.put(modificationTemp.idCommitParent, modificationTemp.idCommit, modificationTemp.pathOld, modificationTemp.pathNew, modificationTemp);
-            }
-             */
         }
     }
 
     //個々のモジュールについて、そのモジュールに対するコミットについて、親子関係を解析する。子の方向。
     //リネームを貫通して追跡する。
-    public void identifyCommitsChild(){
-        for(Module module: ProgressBar.wrap(modules.values(), "identifyCommitsChild")){
-            Set<Modification> modificationsComplete = new HashSet<>();
-            Queue<Modification> modificationsTarget = new ArrayDeque<>(module.modifications.values());
-
-            while(0<modificationsTarget.size()) {
-                Modification modificationTarget = modificationsTarget.poll();
-                if(modificationsComplete.contains(modificationTarget)){
-                    continue;
+    public void completeCommitHistory() {
+        for (String pathModule : ProgressBar.wrap(modules.keySet(), "completeCommitHistory")) {
+            Module moduleTarget = modules.get(pathModule);
+            Queue<Modification> modificationsTarget = new ArrayDeque<>(moduleTarget.getModifications().values().stream().filter(a->Objects.equals(a.type, "RENAME")|Objects.equals(a.type, "COPY")).collect(Collectors.toList()));
+            Modification modificationTarget;
+            while (0 < modificationsTarget.size()) {//親
+                modificationTarget = modificationsTarget.poll();
+                for(Modification modification: modificationTarget.parentsModification.values()) {
+                    moduleTarget.modifications.put(modification.idCommitParent, modification.idCommit, modification.pathOld, modification.pathNew, modification);
+                    modificationsTarget.add(modification);
                 }
-                String pathModuleNew;
-                if (modificationTarget.type.equals("DELETE")) {
-                    pathModuleNew = modificationTarget.pathOld;
-                }else{
-                    pathModuleNew = modificationTarget.pathNew;
-                }
-                Module moduleNew = modules.get(pathModuleNew);
-                for(Modification modificationNew: moduleNew.modifications.values()){
-                    if(modificationNew.idCommitParent.equals(modificationTarget.idCommit)){
-                        modificationTarget.children.add(modificationNew.idCommitParent);
-                        modificationsTarget.add(modificationNew);
-                    }
-                }
-                modificationsComplete.add(modificationTarget);
             }
-
-            module.modifications.clear();
-            for(Modification modificationTemp: modificationsComplete) {
-                module.modifications.put(modificationTemp.idCommitParent, modificationTemp.idCommit, modificationTemp.pathOld, modificationTemp.pathNew, modificationTemp);
+            modificationsTarget = new ArrayDeque<>(moduleTarget.getModifications().values().stream().filter(a->Objects.equals(a.type, "RENAME")|Objects.equals(a.type, "COPY")).collect(Collectors.toList()));
+            while (0 < modificationsTarget.size()) {//子
+                modificationTarget = modificationsTarget.poll();
+                for(Modification modification: modificationTarget.childrenModification.values()) {
+                    moduleTarget.modifications.put(modification.idCommitParent, modification.idCommit, modification.pathOld, modification.pathNew, modification);
+                    modificationsTarget.add(modification);
+                }
             }
         }
     }
@@ -237,8 +274,15 @@ public class Modules implements Map<String, Module>{
     }
 
     public void saveToFile(String pathModules) {
+        int count=0;
         for(Entry<String, Module> entry : ProgressBar.wrap(modules.entrySet(), "saveModules")) {
-            File file =  new File(pathModules+"/"+entry.getKey()+".json");
+            String path = pathModules+"/"+entry.getKey()+".json";
+            File file =  new File(path);
+            path = file.getAbsolutePath();
+            if(255<path.length()){
+                path = pathModules+"/"+Integer.toString(count)+".json";
+                file = new File(path);
+            }
             File dir = new File(file.getParent());
             dir.mkdirs();
             try (FileOutputStream fos = new FileOutputStream(file);
@@ -246,39 +290,47 @@ public class Modules implements Map<String, Module>{
                  BufferedWriter writer = new BufferedWriter(osw)) {
                 ObjectMapper mapper = new ObjectMapper();
                 mapper.writeValue(writer, entry.getValue());
+                count++;
             } catch (IOException e) {
                 e.printStackTrace();
             }
         }
     }
 
-    public void identifyTargetModules(Modules modulesAll, String pathRepository, String[] commitEdges) throws IOException, GitAPIException, GitAPIException {
-        checkoutRepository(pathRepository, commitEdges[1]);
-        List<String> pathSources = findFiles(pathRepository, ".mjava", "test");
+    public void identifyTargetModules(Modules modulesAll, Repository repositoryMethod, String[] commitEdges) throws IOException, GitAPIException, GitAPIException {
+        List<String> pathSources = new ArrayList<>();
+        RevCommit revCommit = repositoryMethod.parseCommit(repositoryMethod.resolve(commitEdges[1]));
+        RevTree tree = revCommit.getTree();
+        try (TreeWalk treeWalk = new TreeWalk(repositoryMethod)) {
+            treeWalk.addTree(tree);
+            treeWalk.setRecursive(true);
+            treeWalk.setFilter(PathSuffixFilter.create(".mjava"));
+            while (treeWalk.next()) {
+                //System.out.println(treeWalk.getPathString());
+                pathSources.add(treeWalk.getPathString());
+            }
+        }
         for(String pathSource: ProgressBar.wrap(pathSources, "identifyTargetModules")) {
-            String prefix = pathRepository.replace("\\", "/")+"/";
-            int index = pathSource.indexOf(prefix);
-            String pathModule = pathSource.substring(index+prefix.length());
-            Module module = new Module(pathModule);
-            modules.put(pathModule, modulesAll.get(pathModule));
+            modules.put(pathSource, modulesAll.get(pathSource));
         }
     }
 
     //対象モジュール全部について、コードメトリクスを算出する。
-    public void calcCodeMetrics(String pathRepositoryFile, String[] commitEdgesFile, String pathRepositoryMethod, String[] commitEdgesMethod) throws IOException, GitAPIException {
-        checkoutRepository(pathRepositoryFile, commitEdgesFile[1]);
+    public void calcCodeMetrics(Repository repositoryFile, String[] commitEdgesFile,Repository repositoryMethod, String[] commitEdgesMethod) throws IOException, GitAPIException {
+        checkoutRepository(repositoryFile, commitEdgesFile[1]);
         System.out.println("calculating FanIn...");
-        calcFanIn(pathRepositoryFile, commitEdgesFile);
+        calcFanIn(repositoryFile.getDirectory().getParentFile().getAbsolutePath(), commitEdgesFile);
         for(String pathModule: ProgressBar.wrap(modules.keySet(), "calcCodeMetrics")){
             Module module = modules.get(pathModule);
-            module.calcFanOut(pathRepositoryMethod);
-            module.calcParameters(pathRepositoryMethod);
-            module.calcLocalVar(pathRepositoryMethod);
-            module.calcCommentRatio(pathRepositoryMethod);
-            module.calcCountPath(pathRepositoryMethod);
-            module.calcComplexity(pathRepositoryMethod);
-            module.calcExecStmt(pathRepositoryMethod);
-            module.calcMaxNesting(pathRepositoryMethod);
+            module.loadSrcFromRepository(repositoryMethod, commitEdgesMethod[1]);
+            module.calcFanOut();
+            module.calcParameters();
+            module.calcLocalVar();
+            module.calcCommentRatio();
+            module.calcCountPath();
+            module.calcComplexity();
+            module.calcExecStmt();
+            module.calcMaxNesting();
             //module.calcLOC(pathRepositoryMethod);
         }
     }
@@ -307,7 +359,7 @@ public class Modules implements Map<String, Module>{
         for(String idMethodCalled: requestorFanIn.methodsCalled) {
             for(String pathMethod: modules.keySet()) {
                 String idMethod = modules.get(pathMethod).id;
-                if(idMethod.equals(idMethodCalled)) {
+                if(Objects.equals(idMethod, idMethodCalled)) {
                     modules.get(pathMethod).fanIn++;
                 }
             }
@@ -437,7 +489,7 @@ public class Modules implements Map<String, Module>{
     }
 
     public void loadModulesFromFile(String pathModules) {
-        List<String> paths = findFiles(pathModules, "json");
+        List<String> paths = findFiles(pathModules, ".json");
         for(String path : ProgressBar.wrap(paths, "loadModulesFromFile")){
             try {
                 String strFile = readFile(path);
