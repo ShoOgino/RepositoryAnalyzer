@@ -319,7 +319,9 @@ public class Modules implements Map<String, Module>{
     public void calcCodeMetrics(Repository repositoryFile, String[] commitEdgesFile,Repository repositoryMethod, String[] commitEdgesMethod) throws IOException, GitAPIException {
         checkoutRepository(repositoryFile, commitEdgesFile[1]);
         System.out.println("calculating FanIn...");
+        System.out.println(repositoryFile.getDirectory().getParentFile().getAbsolutePath());
         calcFanIn(repositoryFile.getDirectory().getParentFile().getAbsolutePath(), commitEdgesFile);
+        System.out.println("FanIn caluculated");
         for(String pathModule: ProgressBar.wrap(modules.keySet(), "calcCodeMetrics")){
             Module module = modules.get(pathModule);
             module.loadSrcFromRepository(repositoryMethod, commitEdgesMethod[1]);
@@ -341,11 +343,11 @@ public class Modules implements Map<String, Module>{
         final String[] libraries      = findFiles(pathRepositoryFile, ".jar", "test").toArray(new String[0]);
         final String[] sources        = findFiles(pathRepositoryFile, ".java", "test").toArray(new String[0]);
 
-        ASTParser parser = ASTParser.newParser(AST.JLS3);
+        ASTParser parser = ASTParser.newParser(AST.JLS14);
         final Map<String,String> options = JavaCore.getOptions();
-        options.put(JavaCore.COMPILER_COMPLIANCE, JavaCore.VERSION_1_7);
-        options.put(JavaCore.COMPILER_CODEGEN_TARGET_PLATFORM, JavaCore.VERSION_1_7);
-        options.put(JavaCore.COMPILER_SOURCE, JavaCore.VERSION_1_7);
+        options.put(JavaCore.COMPILER_COMPLIANCE, JavaCore.VERSION_14);
+        options.put(JavaCore.COMPILER_CODEGEN_TARGET_PLATFORM, JavaCore.VERSION_14);
+        options.put(JavaCore.COMPILER_SOURCE, JavaCore.VERSION_14);
         parser.setCompilerOptions(options);
         parser.setResolveBindings(true);
         parser.setKind(ASTParser.K_COMPILATION_UNIT);
@@ -356,7 +358,8 @@ public class Modules implements Map<String, Module>{
         String[] keys = new String[] {""};
         RequestorFanIn requestorFanIn = new RequestorFanIn(modules);
         parser.createASTs(sources, null, keys, requestorFanIn, new NullProgressMonitor());
-        for(String idMethodCalled: requestorFanIn.methodsCalled) {
+        System.out.println("ASTs created");
+        for(String idMethodCalled: ProgressBar.wrap(requestorFanIn.methodsCalled, "processMethodCalled")) {
             for(String pathMethod: modules.keySet()) {
                 String idMethod = modules.get(pathMethod).id;
                 if(Objects.equals(idMethod, idMethodCalled)) {
@@ -364,6 +367,7 @@ public class Modules implements Map<String, Module>{
                 }
             }
         }
+
     }
 
     //対象モジュール全部について、プロセスメトリクスを算出する。

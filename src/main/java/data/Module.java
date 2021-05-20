@@ -832,7 +832,7 @@ public class Module {
 			sourceCurrent ="public class Dummy{"+modification.sourceNew+"}";
 		}
 
-		FileDistiller distiller = ChangeDistiller.createFileDistiller();
+		FileDistiller distiller = ChangeDistiller.createFileDistiller(ChangeDistiller.Language.JAVA);
 		try {
 			distiller.extractClassifiedSourceCodeChanges(sourcePrev, sourceCurrent);
 		} catch(Exception e) {
