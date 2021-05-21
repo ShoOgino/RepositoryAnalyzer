@@ -358,7 +358,6 @@ public class Modules implements Map<String, Module>{
         String[] keys = new String[] {""};
         RequestorFanIn requestorFanIn = new RequestorFanIn(modules);
         parser.createASTs(sources, null, keys, requestorFanIn, new NullProgressMonitor());
-        System.out.println("ASTs created");
         for(String idMethodCalled: ProgressBar.wrap(requestorFanIn.methodsCalled, "processMethodCalled")) {
             for(String pathMethod: modules.keySet()) {
                 String idMethod = modules.get(pathMethod).id;
@@ -367,7 +366,6 @@ public class Modules implements Map<String, Module>{
                 }
             }
         }
-
     }
 
     //対象モジュール全部について、プロセスメトリクスを算出する。

@@ -836,8 +836,6 @@ public class Module {
 		try {
 			distiller.extractClassifiedSourceCodeChanges(sourcePrev, sourceCurrent);
 		} catch(Exception e) {
-			System.err.println("Warning: error while change distilling. " + e.getMessage());
-			System.out.println(this.path);
 		}
 		return distiller.getSourceCodeChanges();
 	}

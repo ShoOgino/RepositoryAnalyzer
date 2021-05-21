@@ -41,8 +41,6 @@ public class Main {
 		Bugs bugsAll = new Bugs();
 
 		try {
-			System.out.println(pathRepositoryFile);
-			modulesAll.calcFanIn(pathRepositoryFile, commitEdgesFile);
 			if(bean.loadHistoryFromFile){
 				commitsAll.loadCommitsFromFile(pathCommits);
 				modulesAll.loadModulesFromFile(pathModules);
