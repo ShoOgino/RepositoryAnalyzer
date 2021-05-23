@@ -36,7 +36,7 @@
         --commitEdgesFile ${コミットid(ファイル粒度の方)。対象期間の始端を表す} ${コミットid(ファイル粒度の方)。対象期間の終端を表す}<br>
         --calcMetrics<br>
 - 結果として、下記のようなディレクトリ構成になっているはず。
-    - ${プロジェクトフォルダ}
+    - projectEGit
         - repositoryMethod(メソッド粒度のリポジトリフォルダ)
         - repositoryFile(ファイル粒度のリポジトリフォルダ)
         - datasets
