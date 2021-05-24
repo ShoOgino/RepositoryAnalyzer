@@ -12,6 +12,7 @@ group 'jp.oginosho'
 version '1.0.0'
 
 repositories {
+    mavenLocal()
     mavenCentral()
 }
 
@@ -19,7 +20,6 @@ dependencies {
     implementation 'org.projectlombok:lombok:1.18.18'
     testImplementation 'org.junit.jupiter:junit-jupiter-api:5.7.0'
     testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.7.0'
-    implementation group: 'org.eclipse.jgit', name: 'org.eclipse.jgit', version: '5.11.0.202103091610-r'
     implementation group: 'org.eclipse.jdt', name: 'org.eclipse.jdt.core', version: '3.23.0'
     implementation group: 'net.sf.jsefa', name: 'jsefa', version: '1.1.0.RELEASE'
     implementation group: 'com.fasterxml.jackson.core', name: 'jackson-annotations', version: '2.11.1'
@@ -33,13 +33,14 @@ dependencies {
     implementation group: 'org.slf4j', name: 'slf4j-api', version: '1.7.25'//warningを出さないように
     implementation group: 'org.slf4j', name: 'slf4j-simple', version: '1.7.25'//warningを出さないように
     compileOnly group: 'org.projectlombok', name: 'lombok', version: '1.18.20'
-    testCompileOnly  group: 'org.projectlombok', name: 'lombok', version: '1.18.20'
+    testCompileOnly group: 'org.projectlombok', name: 'lombok', version: '1.18.20'
     annotationProcessor group: 'org.projectlombok', name: 'lombok', version: '1.18.20'
-    testAnnotationProcessor  group: 'org.projectlombok', name: 'lombok', version: '1.18.20'
+    testAnnotationProcessor group: 'org.projectlombok', name: 'lombok', version: '1.18.20'
     //implementation group: '', name: '', version: ''
     implementation files('lib/changedistiller-0.0.1-SNAPSHOT.jar')
+    implementation group: 'org.eclipse.jgit', name: 'org.eclipse.jgit', version: '5.10.0-SNAPSHOT'
+    //implementation group: 'org.eclipse.jgit', name: 'org.eclipse.jgit', version: '5.11.0.202103091610-r'
 }
-
 test {
     useJUnitPlatform()
 }

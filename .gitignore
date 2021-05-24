@@ -23,8 +23,6 @@ gradle-app.setting
 .mtj.tmp/
 
 # Package Files #
-*.jar
-!gradle-wrapper.jar
 *.war
 *.ear
 

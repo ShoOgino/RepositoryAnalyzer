@@ -50,10 +50,6 @@ public class Main {
 				modulesAll.analyzeModules(commitsAll);
 			}
 			bugsAll.loadBugsFromFile(pathBugs);
-			if(bean.saveHistoryToFile) {
-				modulesAll.saveToFile(pathModules);
-			}
-
 			if(bean.calcMetrics){
 				//個々のモジュールについてメトリクスを計測
 				Modules modulesTarget = new Modules();
@@ -61,6 +57,9 @@ public class Main {
 				modulesTarget.calcCodeMetrics(repositoryFile, commitEdgesFile, repositoryMethod, commitEdgesMethod);
 				modulesTarget.calcProcessMetrics(modulesAll, commitsAll, bugsAll, commitEdgesMethod);
 				modulesTarget.saveMetricsAsRecords(pathDataset);
+			}
+			if(bean.saveHistoryToFile) {
+				modulesAll.saveToFile(pathModules);
 			}
 		} catch (Exception e) {
 			e.printStackTrace();

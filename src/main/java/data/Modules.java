@@ -46,10 +46,10 @@ public class Modules implements Map<String, Module>{
         identifyModificationsOnModule(commits);
         identifyCommitParent(commits);
         completeCommitHistory();
-        checkParent();
-        checkChildren();
-        identifyCommitsHead();
-        identifyCommitsRoot();
+        //checkParent();
+        //checkChildren();
+        //identifyCommitsHead();
+        //identifyCommitsRoot();
     }
 
     private void check() {
@@ -319,7 +319,6 @@ public class Modules implements Map<String, Module>{
     public void calcCodeMetrics(Repository repositoryFile, String[] commitEdgesFile,Repository repositoryMethod, String[] commitEdgesMethod) throws IOException, GitAPIException {
         checkoutRepository(repositoryFile, commitEdgesFile[1]);
         System.out.println("calculating FanIn...");
-        System.out.println(repositoryFile.getDirectory().getParentFile().getAbsolutePath());
         calcFanIn(repositoryFile.getDirectory().getParentFile().getAbsolutePath(), commitEdgesFile);
         System.out.println("FanIn caluculated");
         for(String pathModule: ProgressBar.wrap(modules.keySet(), "calcCodeMetrics")){
@@ -340,8 +339,8 @@ public class Modules implements Map<String, Module>{
     //FanInは個々のモジュールで独立に計算できない。仕方なく別口で計算する。
     public void calcFanIn(String pathRepositoryFile, String[] commitEdgesFile) throws GitAPIException, IOException {
         final String[] sourcePathDirs = {};
-        final String[] libraries      = findFiles(pathRepositoryFile, ".jar", "test").toArray(new String[0]);
-        final String[] sources        = findFiles(pathRepositoryFile, ".java", "test").toArray(new String[0]);
+        final String[] libraries      = findFiles(pathRepositoryFile, ".jar").toArray(new String[0]);
+        final String[] sources        = findFiles(pathRepositoryFile, ".java").toArray(new String[0]);
 
         ASTParser parser = ASTParser.newParser(AST.JLS14);
         final Map<String,String> options = JavaCore.getOptions();
@@ -358,13 +357,21 @@ public class Modules implements Map<String, Module>{
         String[] keys = new String[] {""};
         RequestorFanIn requestorFanIn = new RequestorFanIn(modules);
         parser.createASTs(sources, null, keys, requestorFanIn, new NullProgressMonitor());
-        for(String idMethodCalled: ProgressBar.wrap(requestorFanIn.methodsCalled, "processMethodCalled")) {
+        System.out.println("calculated Fanin");
+        //int countCalledMethod = 0;
+        for(String idMethodCalled: requestorFanIn.methodsCalled) {//for(String idMethodCalled: ProgressBar.wrap(requestorFanIn.methodsCalled, "processMethodCalled")) {
+            if(idMethodCalled==null)continue;
+            //countCalledMethod++;
+            boolean flag=false;
             for(String pathMethod: modules.keySet()) {
                 String idMethod = modules.get(pathMethod).id;
                 if(Objects.equals(idMethod, idMethodCalled)) {
                     modules.get(pathMethod).fanIn++;
+                    //flag=true;
+                    break;
                 }
             }
+            //if(!flag)System.out.println(idMethodCalled);
         }
     }
 

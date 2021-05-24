@@ -33,7 +33,6 @@ import org.eclipse.jgit.treewalk.filter.PathSuffixFilter;
 @CsvDataType()
 @Data
 public class Module {
-	@JsonIgnore
 	public String id="";
 	@CsvField(pos = 1)
 	public String path;
