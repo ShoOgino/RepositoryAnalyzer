@@ -32,5 +32,5 @@
         - repositoryMethod(メソッド粒度のリポジトリフォルダ)
         - repositoryFile(ファイル粒度のリポジトリフォルダ)
         - datasets
-            - 2c1b0f4a_12414723.csv
+            - 2c1b0f4a_12414723.csv(そのプロジェクトの指定された期間についてのメソッドメトリクスが記録されている)
         - bugs.json
