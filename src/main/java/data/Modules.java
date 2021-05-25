@@ -311,7 +311,7 @@ public class Modules implements Map<String, Module>{
             }
         }
         for(String pathSource: ProgressBar.wrap(pathSources, "identifyTargetModules")) {
-            modules.put(pathSource, modulesAll.get(pathSource));
+            if(!pathSource.contains("test")) modules.put(pathSource, modulesAll.get(pathSource));
         }
     }
 
@@ -357,9 +357,8 @@ public class Modules implements Map<String, Module>{
         String[] keys = new String[] {""};
         RequestorFanIn requestorFanIn = new RequestorFanIn(modules);
         parser.createASTs(sources, null, keys, requestorFanIn, new NullProgressMonitor());
-        System.out.println("calculated Fanin");
         //int countCalledMethod = 0;
-        for(String idMethodCalled: requestorFanIn.methodsCalled) {//for(String idMethodCalled: ProgressBar.wrap(requestorFanIn.methodsCalled, "processMethodCalled")) {
+        for(String idMethodCalled: ProgressBar.wrap(requestorFanIn.methodsCalled, "processMethodCalled")) {
             if(idMethodCalled==null)continue;
             //countCalledMethod++;
             boolean flag=false;
