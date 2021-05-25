@@ -12,7 +12,7 @@
 2. プロジェクトフォルダ直下で下記の操作を行なう。
     - git clone https://github.com/eclipse/egit.git repositoryFile
     - git clone https://github.com/ShoOgino/egitMethod202104.git repositoryMethod
-    - https://github.com/ShoOgino/bugs/blob/main/egit/bugs.jsonをダウンロード
+    - https://github.com/ShoOgino/bugs/blob/main/egit/bugs.json をダウンロード
 - プロジェクトフォルダのディレクトリ構成は下記の通りになっているはず。
     - projectEgit
         - repositoryMethod(メソッド粒度のリポジトリフォルダ)
@@ -32,5 +32,5 @@
         - repositoryMethod(メソッド粒度のリポジトリフォルダ)
         - repositoryFile(ファイル粒度のリポジトリフォルダ)
         - datasets
-            - 2c1b0f4a_12414723.csv
+            - 2c1b0f4a_12414723.csv(そのプロジェクトの指定された期間についてのメソッドメトリクスが記録されている)
         - bugs.json
