@@ -704,9 +704,10 @@ public class Module {
 			for (BugAtomic bugAtomic : bugAtomics) {
 				Commit commitFix = commitsAll.get(bugAtomic.idCommitFix);
 				Commit commitTimePoint = commitsAll.get(intervalCommit[1]);
-				//todo: Commit commitLastBugFix = commitsAll.get(intervalCommit[2]);
+				Commit commitLastBugFix = commitsAll.get(intervalCommit[2]);
 				for (String idCommit : bugAtomic.idsCommitInduce) {
 					Commit commitInduce = commitsAll.get(idCommit);
+					//if (commitInduce.date < commitTimePoint.date & commitTimePoint.date < commitFix.date & commitFix.date < commitLastBugFix.date)
 					if (commitInduce.date < commitTimePoint.date & commitTimePoint.date < commitFix.date)
 						isBuggy = 1;
 				}
@@ -761,7 +762,7 @@ public class Module {
 		String sourceCurrent =null;
 		String strPre = null;
 		String strPost = null;
-		if(modification.sourceOld==null) {
+		if(modification.sourceOld.equals("")) {
 			String regex  = "\\n|\\r\\n";
 			String tmp=modification.sourceNew;
 			String[] lines = tmp.split(regex, 0);
