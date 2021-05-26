@@ -51,6 +51,9 @@ public class Main {
 			commitsAll.loadCommitsFromRepository(repositoryMethod, idCommitHead, pathCommits);
 			commitsAll.loadCommitsFromFile(pathCommits);
 			modulesAll.analyzeModules(commitsAll);
+			if(bean.saveHistoryToFile) {
+				modulesAll.saveToFile(pathModules);
+			}
 		}
 		bugsAll.loadBugsFromFile(pathBugs);
 
@@ -69,9 +72,6 @@ public class Main {
 					modulesTarget.calcProcessMetrics(modulesAll, commitsAll, bugsAll, commitEdgesMethod);
 					modulesTarget.saveMetricsAsRecords(pathDataset);
 				//}
-				if(bean.saveHistoryToFile) {
-					modulesAll.saveToFile(pathModules);
-				}
 			} catch (Exception e) {
 				e.printStackTrace();
 			}
