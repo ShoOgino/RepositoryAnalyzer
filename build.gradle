@@ -38,8 +38,9 @@ dependencies {
     testAnnotationProcessor group: 'org.projectlombok', name: 'lombok', version: '1.18.20'
     //implementation group: '', name: '', version: ''
     implementation files('lib/changedistiller-0.0.1-SNAPSHOT.jar')
-    implementation group: 'org.eclipse.jgit', name: 'org.eclipse.jgit', version: '5.10.0-SNAPSHOT'
-    //implementation group: 'org.eclipse.jgit', name: 'org.eclipse.jgit', version: '5.11.0.202103091610-r'
+    //implementation group: 'org.eclipse.jgit', name: 'org.eclipse.jgit', version: '5.10.0-SNAPSHOT'
+    implementation group: 'org.eclipse.jgit', name: 'org.eclipse.jgit', version: '5.11.0.202103091610-r'
+    implementation group: 'commons-io', name: 'commons-io', version: '2.9.0'
 }
 test {
     useJUnitPlatform()

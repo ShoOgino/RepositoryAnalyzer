@@ -13,9 +13,9 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
-public class Modifications implements Map<MultiKey<? extends String>, Modification> {
+public class ChangesOnModule implements Map<MultiKey<? extends String>, ChangeOnModule> {
     @JsonDeserialize(keyUsing = DeserializerModification.class)
-    private final MultiKeyMap<String, Modification> modifications = new MultiKeyMap<>();
+    private final MultiKeyMap<String, ChangeOnModule> modifications = new MultiKeyMap<>();
 
     @Override
     public int size() {
@@ -38,42 +38,42 @@ public class Modifications implements Map<MultiKey<? extends String>, Modificati
     }
 
     @Override
-    public Modification get(Object key) {
+    public ChangeOnModule get(Object key) {
         return modifications.get(key);
     }
 
-    public Modification get(String idCommitParent, String idCommit, String pathOld, String pathNew){
+    public ChangeOnModule get(String idCommitParent, String idCommit, String pathOld, String pathNew){
         return modifications.get(idCommitParent, idCommit, pathOld, pathNew);
     }
 
-    public List<Modification> findFromIdCommit(String idCommit) {
+    public List<ChangeOnModule> findFromIdCommit(String idCommit) {
         return modifications.values().stream().filter(a->a.idCommit.equals(idCommit)).collect(Collectors.toList());
     }
 
-    public List<Modification> findFromPathOld(String pathOld) {
+    public List<ChangeOnModule> findFromPathOld(String pathOld) {
         return modifications.values().stream().filter(a->a.pathOld.equals(pathOld)).collect(Collectors.toList());
     }
 
-    public List<Modification> findFromPathNew(String pathNew) {
+    public List<ChangeOnModule> findFromPathNew(String pathNew) {
         return modifications.values().stream().filter(a->a.pathNew.equals(pathNew)).collect(Collectors.toList());
     }
 
-    public void put(String idCommitParent, String idCommit, String pathOld, String pathNew, Modification modification){
-        modifications.put(idCommitParent, idCommit, pathOld, pathNew, modification);
+    public void put(String idCommitParent, String idCommit, String pathOld, String pathNew, ChangeOnModule changeOnModule){
+        modifications.put(idCommitParent, idCommit, pathOld, pathNew, changeOnModule);
     }
 
     @Override
-    public Modification put(MultiKey<? extends String> key, Modification value) {
+    public ChangeOnModule put(MultiKey<? extends String> key, ChangeOnModule value) {
         return modifications.put(key, value);
     }
 
     @Override
-    public Modification remove(Object key) {
+    public ChangeOnModule remove(Object key) {
         return modifications.remove(key);
     }
 
     @Override
-    public void putAll(Map<? extends MultiKey<? extends String>, ? extends Modification> m) {
+    public void putAll(Map<? extends MultiKey<? extends String>, ? extends ChangeOnModule> m) {
         modifications.putAll(m);
     }
 
@@ -88,12 +88,12 @@ public class Modifications implements Map<MultiKey<? extends String>, Modificati
     }
 
     @Override
-    public Collection<Modification> values(){
+    public Collection<ChangeOnModule> values(){
         return modifications.values();
     }
 
     @Override
-    public Set<Entry<MultiKey<? extends String>, Modification>> entrySet() {
+    public Set<Entry<MultiKey<? extends String>, ChangeOnModule>> entrySet() {
         return modifications.entrySet();
     }
 }

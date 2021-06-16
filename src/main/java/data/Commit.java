@@ -8,7 +8,6 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -17,7 +16,7 @@ public class Commit{
 	public int date;
 	public String author;
 	public boolean isMerge;
-	public Map<String, Modifications> idParent2Modifications = new HashMap<>();
+	public Map<String, ChangesOnModule> idParent2Modifications = new HashMap<>();
 	public String idParentMaster;
 	public Commit() {
 	}

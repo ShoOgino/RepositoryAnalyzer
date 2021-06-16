@@ -35,6 +35,6 @@ public class RepositoryUtil {
         Git git = new Git(repository);
         git.clean().setForce(true).call();
         git.reset().setMode(ResetCommand.ResetType.HARD).call();
-        git.checkout().setName(idCommit).call();
+        git.checkout().setForced(true).setName(idCommit).call();
     }
 }

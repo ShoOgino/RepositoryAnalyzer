@@ -6,11 +6,11 @@ import java.util.ArrayList;
 import java.util.List;
 
 @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
-public class Change {
+public class Diff {
     List<Integer> before;
     List<Integer> after;
 
-    public Change(){
+    public Diff(){
         before = new ArrayList<>();
         after = new ArrayList<>();
     }

@@ -1,7 +1,6 @@
 package data;
 
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
-import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.module.SimpleModule;
@@ -11,16 +10,13 @@ import misc.DeserializerModification;
 import org.apache.commons.collections4.keyvalue.MultiKey;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.errors.GitAPIException;
-import org.eclipse.jgit.diff.*;
+import org.eclipse.jgit.errors.IncorrectObjectTypeException;
+import org.eclipse.jgit.errors.MissingObjectException;
 import org.eclipse.jgit.lib.*;
 import org.eclipse.jgit.revwalk.RevCommit;
-import org.eclipse.jgit.storage.file.FileRepositoryBuilder;
-import org.eclipse.jgit.treewalk.AbstractTreeIterator;
-import org.eclipse.jgit.treewalk.CanonicalTreeParser;
-import org.eclipse.jgit.treewalk.EmptyTreeIterator;
+import org.eclipse.jgit.revwalk.RevWalk;
 
 import java.io.*;
-import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
@@ -31,14 +27,20 @@ import static util.FileUtil.readFile;
 @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
 public class Commits implements Map<String, Commit> {
     private final TreeMap<String, Commit> commits = new TreeMap<>();
-    public void loadCommitsFromRepository(Repository repository, String idCommitHead, String pathCommits) throws IOException,  GitAPIException {
-        final Git git = new Git(repository);
+    public void loadCommitsFromRepository(Repository repository, String pathCommits){
+        List<RevCommit> commitsAll = new ArrayList<RevCommit>();
+        Collection<Ref> allRefs = repository.getAllRefs().values();
+        try (RevWalk revWalk = new RevWalk(repository)) {
+            for(Ref ref : allRefs) {
+                revWalk.markStart(revWalk.parseCommit(ref.getObjectId()));
+            }
+            for(RevCommit commit : revWalk){
+                commitsAll.add(commit);
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
 
-        AnyObjectId objectIdCommitHead = ObjectId.fromString(idCommitHead);
-        List<RevCommit> commitsAll = StreamSupport
-                .stream(git.log().add(objectIdCommitHead).call().spliterator(), false)
-                .collect(Collectors.toList());
-        //Collections.reverse(commitsAll);//past2future
         Collections.shuffle(commitsAll);
         Runtime r = Runtime.getRuntime();
         int NOfCPU = r.availableProcessors();

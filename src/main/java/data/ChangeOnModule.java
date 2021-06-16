@@ -2,12 +2,11 @@ package data;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.Data;
-import org.apache.commons.collections4.keyvalue.MultiKey;
 
 import java.util.*;
 
 @Data
-public class Modification {
+public class ChangeOnModule {
 	public String idCommit;
 	public String idCommitParent;
 	public int date;
@@ -19,16 +18,16 @@ public class Modification {
 	public String sourceNew;
 	public String sourceOld;
 	@JsonIgnore
-	public Changes changes;
+	public Diffs diffs;
 	public String pathNewParent;
 	@JsonIgnore
-	public Modifications parentsModification;
+	public ChangesOnModule parentsModification;
 	public List<String> parents;
 	@JsonIgnore
-	public Modifications childrenModification;
+	public ChangesOnModule childrenModification;
 	public List<String> children;
 
-	public Modification() {
+	public ChangeOnModule() {
 		this.idCommit= "";
 		this.idCommitParent = "";
 		this.date=0;
@@ -38,27 +37,27 @@ public class Modification {
 		this.pathNew= "";
 		this.sourceOld= "";
 		this.sourceNew= "";
-		this.changes = new Changes();
+		this.diffs = new Diffs();
 		this.pathNewParent = "";
-		this.parentsModification = new Modifications();
+		this.parentsModification = new ChangesOnModule();
 		this.parents = new ArrayList<>();
-		this.childrenModification = new Modifications();
+		this.childrenModification = new ChangesOnModule();
 		this.children = new ArrayList<>();
 	}
 
-	public void loadAncestors(Modifications modifications){
-		modifications.put(this.idCommitParent, this.idCommit, this.pathOld, this.pathNew, this);
-		for(Modification modification: this.parentsModification.values()) {
-			if(!modifications.containsValue(modification))modification.loadAncestors(modifications);
+	public void loadAncestors(ChangesOnModule changesOnModule){
+		changesOnModule.put(this.idCommitParent, this.idCommit, this.pathOld, this.pathNew, this);
+		for(ChangeOnModule changeOnModule : this.parentsModification.values()) {
+			if(!changesOnModule.containsValue(changeOnModule)) changeOnModule.loadAncestors(changesOnModule);
 		}
 	}
 
 	public int calcNOAddedLines(){
-		return changes.calcNOAddedLines();
+		return diffs.calcNOAddedLines();
 	}
 
 	public int calcNODeletedLines(){
-		return changes.calcNODeletedLines();
+		return diffs.calcNODeletedLines();
 	}
 
 }

@@ -1,80 +1,60 @@
 import data.*;
-import misc.ArgBean;
+import misc.Setting;
 import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.storage.file.FileRepositoryBuilder;
-import org.kohsuke.args4j.CmdLineException;
-import org.kohsuke.args4j.CmdLineParser;
+import org.apache.commons.io.FileUtils;
 import util.FileUtil;
 
-import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileReader;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class Main {
-	// リポジトリ・バグデータを分析し、各種データをファイルにまとめ直す。(AnalyzeRepository)
-	public static void main(String[] args) throws CmdLineException, IOException, GitAPIException {
-		ArgBean bean = new ArgBean();
-		CmdLineParser parser = new CmdLineParser(bean);
-		try {
-			parser.parseArgument(args);
-		} catch (CmdLineException e) {
-			System.out.println("usage:");
-			parser.printSingleLineUsage(System.out);
-			System.out.println();
-			parser.printUsage(System.out);
-			return;
+	public static void main(String[] args) throws IOException {
+		Setting setting = new Setting(args);
+		Project project = new Project(setting);
+		executeTasksInParallel(createTasks(project, setting));
+	}
+
+	private static List<Task> createTasks(Project project, Setting setting) throws IOException {
+		List<Task> tasks = new ArrayList<>();
+		String[] tasksStr = FileUtil.readFile(setting.pathTasks).split("\\n");
+		for (int numTask=0; numTask<tasksStr.length; numTask++) {
+			String[] pattern = tasksStr[numTask].replace("\r", "").split(",");
+		    String nameTask = Arrays.copyOfRange(pattern, 0, 1)[0];
+		    String granuarity = Arrays.copyOfRange(pattern, 1, 2)[0];
+		    String product = Arrays.copyOfRange(pattern, 2, 3)[0];
+		    String[] commitsTargetFile   = Arrays.copyOfRange(pattern, 3, 4);
+		    String[] commitsTargetMethod = Arrays.copyOfRange(pattern, 4, 7);
+		    Task task = new Task(
+		    		numTask,
+		    		nameTask,
+		    		granuarity,
+		    		product,
+		    		setting.pathProject,
+		    		setting.pathRepositoryFile,
+		    		commitsTargetFile,
+		    		setting.pathRepositoryMethod,
+		    		commitsTargetMethod,
+		    		project.commitsAll,
+		    		project.modulesAll,
+		    		project.bugsAll
+		    );
+		    tasks.add(task);
 		}
+		return tasks;
+	}
 
-		String pathProject = bean.pathProject;
-		String pathRepositoryMethod = pathProject+"/repositoryMethod";
-		Repository repositoryMethod = new FileRepositoryBuilder().setGitDir(new File(pathRepositoryMethod + "/.git")).build();
-		String pathRepositoryFile = pathProject+"/repositoryFile";
-		Repository repositoryFile = new FileRepositoryBuilder().setGitDir(new File(pathRepositoryFile + "/.git")).build();
-		String pathModules = pathProject+"/modules";
-		String pathCommits = pathProject+"/commits";
-		String pathBugs = pathProject+"/bugs.json";
-		Commits commitsAll = new Commits();
-		Modules modulesAll = new Modules();
-		Bugs bugsAll = new Bugs();
-
-		String pathCommitIDs = bean.pathCommitIDs;
-		String[] commitIDsPatterns = FileUtil.readFile(pathCommitIDs).split("\\n");
-		String idCommitHead = commitIDsPatterns[commitIDsPatterns.length-1].split(",")[5];
-
-		if(bean.loadHistoryFromFile){
-			commitsAll.loadCommitsFromFile(pathCommits);
-			modulesAll.loadModulesFromFile(pathModules);
-		}else {
-			commitsAll.loadCommitsFromRepository(repositoryMethod, idCommitHead, pathCommits);
-			commitsAll.loadCommitsFromFile(pathCommits);
-			modulesAll.analyzeModules(commitsAll);
-			if(bean.saveHistoryToFile) {
-				modulesAll.saveToFile(pathModules);
-			}
-		}
-		bugsAll.loadBugsFromFile(pathBugs);
-
-		for(String line: commitIDsPatterns){
-			String[] commitIDsPattern = line.replace("\r", "").split(",");
-			try {
-				String[] commitEdgesFile   = Arrays.copyOfRange(commitIDsPattern, 1, 3);
-    			String[] commitEdgesMethod = Arrays.copyOfRange(commitIDsPattern, 3, 6);
-    			String pathDataset = pathProject + "/datasets/" + commitIDsPattern[0] + ".csv";
-				//String pathDataset = pathProject+"/datasets/"+ commitEdgesMethod[0].substring(0,8)+"_"+ commitEdgesMethod[1].substring(0,8)+"_"+commitEdgesMethod[2].substring(0,8)+".csv";
-				//if(bean.calcMetrics){
-				//個々のモジュールについてメトリクスを計測
-					Modules modulesTarget = new Modules();
-					modulesTarget.identifyTargetModules(modulesAll, repositoryMethod, commitEdgesMethod);
-					modulesTarget.calcCodeMetrics(repositoryFile, commitEdgesFile, repositoryMethod, commitEdgesMethod);
-					modulesTarget.calcProcessMetrics(modulesAll, commitsAll, bugsAll, commitEdgesMethod);
-					modulesTarget.saveMetricsAsRecords(pathDataset);
-				//}
-			} catch (Exception e) {
-				e.printStackTrace();
-			}
-		}
+	private static void executeTasksInParallel(List<Task> tasks) throws IOException {
+		Runtime r = Runtime.getRuntime();
+		int numOfCPUs = r.availableProcessors();
+		ExecutorService pool = Executors.newFixedThreadPool(numOfCPUs-2);
+		for(Task task: tasks) pool.submit(task);
+		pool.shutdown();
 	}
 }

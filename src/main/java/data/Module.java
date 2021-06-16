@@ -32,96 +32,97 @@ import org.eclipse.jgit.treewalk.filter.PathSuffixFilter;
 @JsonIgnoreProperties(ignoreUnknown=true)
 @CsvDataType()
 @Data
-public class Module {
+public class Module implements Cloneable{
 	public String id="";
 	@CsvField(pos = 1)
-	public String path;
+	public String path=null;
 	@JsonIgnore
-	public String source;
-	public Modifications modifications;
-	public ArrayList<String> commitsHead;
-	public ArrayList<String> commitsRoot;
-	@JsonIgnore
+	public String source=null;
+	public CompilationUnit compilationUnit =null;
+	public ChangesOnModule changesOnModule =null;
+	public ArrayList<String> commitsHead=null;
+	public ArrayList<String> commitsRoot=null;
 	@CsvField(pos = 2)
-	int isBuggy=0;
+	@JsonIgnore
+	int hasBeenBuggy=0;
 	@CsvField(pos = 3)
 	@JsonIgnore
-	int fanIn=0;
+	int isBuggy=0;
 	@CsvField(pos = 4)
 	@JsonIgnore
-	int fanOut=0;
+	int fanIn=0;
 	@CsvField(pos = 5)
 	@JsonIgnore
-	int parameters=0;
+	int fanOut=0;
 	@CsvField(pos = 6)
 	@JsonIgnore
+	int parameters=0;
+	@CsvField(pos = 7)
+	@JsonIgnore
 	int localVar=0;
-	@CsvField(pos = 7, converterType = DoubleConverter.class)
+	@CsvField(pos = 8, converterType = DoubleConverter.class)
 	@JsonIgnore
 	double commentRatio=0;
-	@JsonIgnore
-	@CsvField(pos = 8)
-	long countPath=0;
 	@CsvField(pos = 9)
 	@JsonIgnore
-	int complexity=0;
+	long countPath=0;
 	@CsvField(pos = 10)
 	@JsonIgnore
-	int execStmt=0;
+	int complexity=0;
 	@CsvField(pos = 11)
+	@JsonIgnore
+	int execStmt=0;
+	@CsvField(pos = 12)
 	@JsonIgnore
 	int maxNesting=0;
 
 	//process metrics
-	@CsvField(pos = 12)
-	@JsonIgnore
-	int moduleHistories=0;
 	@CsvField(pos = 13)
 	@JsonIgnore
-	int authors = 0;
+	int moduleHistories=0;
 	@CsvField(pos = 14)
 	@JsonIgnore
-	int stmtAdded=0;
+	int authors = 0;
 	@CsvField(pos = 15)
 	@JsonIgnore
+	int stmtAdded=0;
+	@CsvField(pos = 16)
+	@JsonIgnore
 	int maxStmtAdded=0;
-	@CsvField(pos = 16, converterType = DoubleConverter.class)
+	@CsvField(pos = 17, converterType = DoubleConverter.class)
 	@JsonIgnore
 	double avgStmtAdded=0;
-	@CsvField(pos = 17)
-	@JsonIgnore
-	int stmtDeleted=0;
 	@CsvField(pos = 18)
 	@JsonIgnore
+	int stmtDeleted=0;
+	@CsvField(pos = 19)
+	@JsonIgnore
 	int maxStmtDeleted=0;
-	@CsvField(pos = 19, converterType = DoubleConverter.class)
+	@CsvField(pos = 20, converterType = DoubleConverter.class)
 	@JsonIgnore
 	double avgStmtDeleted=0;
-	@CsvField(pos = 20)
-	@JsonIgnore
-	int churn=0;
 	@CsvField(pos = 21)
 	@JsonIgnore
+	int churn=0;
+	@CsvField(pos = 22)
+	@JsonIgnore
 	int maxChurn=0;
-	@CsvField(pos = 22, converterType = DoubleConverter.class)
+	@CsvField(pos = 23, converterType = DoubleConverter.class)
 	@JsonIgnore
 	double avgChurn=0;
-	@CsvField(pos = 23)
-	@JsonIgnore
-	int decl=0;
 	@CsvField(pos = 24)
 	@JsonIgnore
-	int cond=0;
+	int decl=0;
 	@CsvField(pos = 25)
 	@JsonIgnore
-	int elseAdded=0;
+	int cond=0;
 	@CsvField(pos = 26)
+	@JsonIgnore
+	int elseAdded=0;
+	@CsvField(pos = 27)
 	@JsonIgnore
 	int elseDeleted=0;
 
-	//@CsvField(pos = 27)
-	@JsonIgnore
-	int hasBeenBuggy=0;
 
 	//@CsvField(pos = 27)
 	@JsonIgnore
@@ -166,45 +167,57 @@ public class Module {
 	@JsonIgnore
 	int minInterval = 0;
 
+	public Module clone() {
+		Module module = null;
+		try {
+			module = (Module) super.clone();
+			module.id=this.id;
+			module.path=this.path;
+			module.source=this.source;
+			module.changesOnModule =this.changesOnModule;
+			module.commitsHead=this.commitsHead;
+			module.commitsRoot=this.commitsRoot;
+		}catch (Exception e){
+			module = null;
+		}
+		return module;
+	}
+
 	public Module() {
 		this.path=new String();
-		this.modifications = new Modifications();
+		this.changesOnModule = new ChangesOnModule();
 		this.commitsHead = new ArrayList<>();
 		this.commitsRoot = new ArrayList<>();
 	}
 
 	public Module(String path) {
 		this.path=path;
-		this.modifications = new Modifications();
+		this.changesOnModule = new ChangesOnModule();
 		this.commitsHead = new ArrayList<>();
 		this.commitsRoot = new ArrayList<>();
 	}
 
 	public void calcMaxNesting() {
-		CompilationUnit unit = calcCompilationUnit();
 		VisitorMaxNesting visitorMaxNesting = new VisitorMaxNesting();
-		unit.accept(visitorMaxNesting);
+		compilationUnit.accept(visitorMaxNesting);
 		maxNesting = visitorMaxNesting.maxNesting;
 	}
 
 	public void calcExecStmt() {
-		CompilationUnit unit = calcCompilationUnit();
 		VisitorExecStmt visitorExecStmt = new VisitorExecStmt();
-		unit.accept(visitorExecStmt);
+		compilationUnit.accept(visitorExecStmt);
 		execStmt = visitorExecStmt.execStmt;
 	}
 
 	public  void calcComplexity() {
-		CompilationUnit unit = calcCompilationUnit();
 		VisitorComplexity visitorComplexity = new VisitorComplexity();
-		unit.accept(visitorComplexity);
+		compilationUnit.accept(visitorComplexity);
 		complexity = visitorComplexity.complexity;
 	}
 
 	public void calcCountPath() {
-		CompilationUnit unit = calcCompilationUnit();
 		VisitorCountPath visitorCountPath = new VisitorCountPath();
-		unit.accept(visitorCountPath);
+		compilationUnit.accept(visitorCountPath);
 		long countPath=1;
 		for(int branch: visitorCountPath.branches) {
 			countPath*=branch;
@@ -242,31 +255,28 @@ public class Module {
 	}
 
 	public  void calcLocalVar() {
-		CompilationUnit unit = calcCompilationUnit();
 		VisitorLocalVar visitorLocalVar = new VisitorLocalVar();
-		unit.accept(visitorLocalVar);
+		compilationUnit.accept(visitorLocalVar);
 		localVar = visitorLocalVar.NOVariables;
 	}
 
 	public  void calcParameters() {
-		CompilationUnit unit = calcCompilationUnit();
 		data.VisitorMethodDeclaration visitorMethodDeclaration = new data.VisitorMethodDeclaration();
-		unit.accept(visitorMethodDeclaration);
+		compilationUnit.accept(visitorMethodDeclaration);
 		parameters = visitorMethodDeclaration.parameters;
 	}
 
 	public  void calcFanOut() {
-		CompilationUnit unit = calcCompilationUnit();
 		VisitorFanout visitor = new VisitorFanout();
-		unit.accept(visitor);
+		compilationUnit.accept(visitor);
 		this.fanOut = visitor.fanout;
 	}
 
 	public  void calcCond(Commits commitsAll, String[] intervalCommit) {
 		int cond=0;
-		List<Modification> modifications = calcModificationsInInterval(commitsAll, intervalCommit);
-		for(Modification modification: modifications) {
-			List<SourceCodeChange> changes = identifyChanges(modification);
+		List<ChangeOnModule> changeOnModules = calcModificationsInInterval(commitsAll, intervalCommit);
+		for(ChangeOnModule changeOnModule : changeOnModules) {
+			List<SourceCodeChange> changes = identifyChanges(changeOnModule);
 			for(SourceCodeChange change : changes) {
 				EntityType et = change.getChangedEntity().getType();
 				if(change.getChangeType()== ChangeType.CONDITION_EXPRESSION_CHANGE)cond++;
@@ -289,9 +299,9 @@ public class Module {
 				ChangeType.RETURN_TYPE_CHANGE,
 				ChangeType.PARAMETER_TYPE_CHANGE
 		);
-		List<Modification> modifications = calcModificationsInInterval(commitsAll, intervalCommit);
-		for(Modification modification: modifications) {
-			List<SourceCodeChange> changes = identifyChanges(modification);
+		List<ChangeOnModule> changeOnModules = calcModificationsInInterval(commitsAll, intervalCommit);
+		for(ChangeOnModule changeOnModule : changeOnModules) {
+			List<SourceCodeChange> changes = identifyChanges(changeOnModule);
 			for(SourceCodeChange change : changes) {
 				EntityType et = change.getChangedEntity().getType();
 				if(ctdecl.contains(change.getChangeType()))decl++;
@@ -309,10 +319,10 @@ public class Module {
 
 	public  void calcMaxChurn(Commits commitsAll, String[] intervalCommit) {
 		int maxChurn=0;
-		List<Modification> modifications = calcModificationsInInterval(commitsAll, intervalCommit);
-		for(Modification modification: modifications) {
+		List<ChangeOnModule> changeOnModules = calcModificationsInInterval(commitsAll, intervalCommit);
+		for(ChangeOnModule changeOnModule : changeOnModules) {
 			int churnTemp=0;
-			List<SourceCodeChange> changes = identifyChanges(modification);
+			List<SourceCodeChange> changes = identifyChanges(changeOnModule);
 			for(SourceCodeChange change : changes) {
 				if(change.getChangeType()==ChangeType.STATEMENT_INSERT)churnTemp++;
 				else if(change.getChangeType()==ChangeType.STATEMENT_DELETE)churnTemp--;
@@ -324,9 +334,9 @@ public class Module {
 
 	public  void calcChurn(Commits commitsAll, String[] intervalCommit) {
 		int churn=0;
-		List<Modification> modifications = calcModificationsInInterval(commitsAll, intervalCommit);
-		for(Modification modification: modifications) {
-			List<SourceCodeChange> changes = identifyChanges(modification);
+		List<ChangeOnModule> changeOnModules = calcModificationsInInterval(commitsAll, intervalCommit);
+		for(ChangeOnModule changeOnModule : changeOnModules) {
+			List<SourceCodeChange> changes = identifyChanges(changeOnModule);
 			for(SourceCodeChange change : changes) {
 				if(change.getChangeType()==ChangeType.STATEMENT_INSERT)churn++;
 				else if(change.getChangeType()==ChangeType.STATEMENT_DELETE)churn--;
@@ -337,9 +347,9 @@ public class Module {
 
 	public  void calcAvgStmtDeleted(Commits commitsAll, String[] intervalCommit) {
 		int avgStmtDeleted=0;
-		List<Modification> modifications = calcModificationsInInterval(commitsAll, intervalCommit);
-		for(Modification modification: modifications) {
-			List<SourceCodeChange> changes = identifyChanges(modification);
+		List<ChangeOnModule> changeOnModules = calcModificationsInInterval(commitsAll, intervalCommit);
+		for(ChangeOnModule changeOnModule : changeOnModules) {
+			List<SourceCodeChange> changes = identifyChanges(changeOnModule);
 			for(SourceCodeChange change : changes) {
 				if(change.getChangeType()==ChangeType.STATEMENT_DELETE)avgStmtDeleted++;
 			}
@@ -351,10 +361,10 @@ public class Module {
 
 	public  void calcMaxStmtDeleted(Commits commitsAll, String[] intervalCommit) {
 		int maxStmtDeleted=0;
-		List<Modification> modifications = calcModificationsInInterval(commitsAll, intervalCommit);
-		for(Modification modification: modifications) {
+		List<ChangeOnModule> changeOnModules = calcModificationsInInterval(commitsAll, intervalCommit);
+		for(ChangeOnModule changeOnModule : changeOnModules) {
 			int stmtDeletedOnCommit=0;
-			List<SourceCodeChange> changes = identifyChanges(modification);
+			List<SourceCodeChange> changes = identifyChanges(changeOnModule);
 			for(SourceCodeChange change : changes) {
 				if(change.getChangeType()==ChangeType.STATEMENT_DELETE)stmtDeletedOnCommit++;
 			}
@@ -367,9 +377,9 @@ public class Module {
 
 	public  void calcStmtDeleted(Commits commitsAll, String[] intervalCommit) {
 		int stmtDeleted=0;
-		List<Modification> modifications = calcModificationsInInterval(commitsAll, intervalCommit);
-		for(Modification modification: modifications) {
-			List<SourceCodeChange> changes = identifyChanges(modification);
+		List<ChangeOnModule> changeOnModules = calcModificationsInInterval(commitsAll, intervalCommit);
+		for(ChangeOnModule changeOnModule : changeOnModules) {
+			List<SourceCodeChange> changes = identifyChanges(changeOnModule);
 			for(SourceCodeChange change : changes) {
 				if(change.getChangeType()==ChangeType.STATEMENT_DELETE)stmtDeleted++;
 			}
@@ -379,9 +389,9 @@ public class Module {
 
 	public  void calcAvgStmtAdded(Commits commitsAll, String[] intervalCommit) {
 		int avgStmtAdded=0;
-		List<Modification> modifications = calcModificationsInInterval(commitsAll, intervalCommit);
-		for(Modification modification: modifications) {
-			List<SourceCodeChange> changes = identifyChanges(modification);
+		List<ChangeOnModule> changeOnModules = calcModificationsInInterval(commitsAll, intervalCommit);
+		for(ChangeOnModule changeOnModule : changeOnModules) {
+			List<SourceCodeChange> changes = identifyChanges(changeOnModule);
 			for(SourceCodeChange change : changes) {
 				if(change.getChangeType()==ChangeType.STATEMENT_INSERT)avgStmtAdded++;
 			}
@@ -393,10 +403,10 @@ public class Module {
 
 	public  void calcMaxStmtAdded(Commits commitsAll, String[] intervalCommit) {
 		int maxStmtAdded=0;
-		List<Modification> modifications = calcModificationsInInterval(commitsAll,intervalCommit);
-		for(Modification modification: modifications) {
+		List<ChangeOnModule> changeOnModules = calcModificationsInInterval(commitsAll,intervalCommit);
+		for(ChangeOnModule changeOnModule : changeOnModules) {
 			int stmtAddedTemp=0;
-			List<SourceCodeChange> changes = identifyChanges(modification);
+			List<SourceCodeChange> changes = identifyChanges(changeOnModule);
 			for(SourceCodeChange change : changes) {
 				if(change.getChangeType()==ChangeType.STATEMENT_INSERT)stmtAddedTemp++;
 			}
@@ -409,9 +419,9 @@ public class Module {
 
 	public  void calcStmtAdded(Commits commitsAll, String[] intervalCommit) {
 		int stmtAdded=0;
-		List<Modification> modifications = calcModificationsInInterval(commitsAll, intervalCommit);
-		for(Modification modification: modifications) {
-			List<SourceCodeChange> changes = identifyChanges(modification);
+		List<ChangeOnModule> changeOnModules = calcModificationsInInterval(commitsAll, intervalCommit);
+		for(ChangeOnModule changeOnModule : changeOnModules) {
+			List<SourceCodeChange> changes = identifyChanges(changeOnModule);
 			for(SourceCodeChange change : changes) {
 				if(change.getChangeType()==ChangeType.STATEMENT_INSERT)stmtAdded++;
 			}
@@ -421,9 +431,9 @@ public class Module {
 
 	public  void calcElseDeleted(Commits commitsAll, String[] intervalCommit) {
 		int elseDeleted=0;
-		List<Modification> modifications = calcModificationsInInterval(commitsAll, intervalCommit);
-		for(Modification modification: modifications) {
-			List<SourceCodeChange> changes = identifyChanges(modification);
+		List<ChangeOnModule> changeOnModules = calcModificationsInInterval(commitsAll, intervalCommit);
+		for(ChangeOnModule changeOnModule : changeOnModules) {
+			List<SourceCodeChange> changes = identifyChanges(changeOnModule);
 			for(SourceCodeChange change : changes) {
 				EntityType et = change.getChangedEntity().getType();
 				if(change.getChangeType()==ChangeType.ALTERNATIVE_PART_DELETE & et.toString().equals("ELSE_STATEMENT"))elseDeleted++;
@@ -434,9 +444,9 @@ public class Module {
 
 	public  void calcElseAdded(Commits commitsAll, String[] intervalCommit) {
 		int elseAdded=0;
-		List<Modification> modifications = calcModificationsInInterval(commitsAll, intervalCommit);
-		for(Modification modification: modifications) {
-			List<SourceCodeChange> changes = identifyChanges(modification);
+		List<ChangeOnModule> changeOnModules = calcModificationsInInterval(commitsAll, intervalCommit);
+		for(ChangeOnModule changeOnModule : changeOnModules) {
+			List<SourceCodeChange> changes = identifyChanges(changeOnModule);
 			for(SourceCodeChange change : changes) {
 				EntityType et = change.getChangedEntity().getType();
 				if(change.getChangeType()==ChangeType.ALTERNATIVE_PART_INSERT & et.toString().equals("ELSE_STATEMENT") )elseAdded++;
@@ -465,32 +475,32 @@ public class Module {
 	}
 
 	public  void calcAddLOC(Commits commitsAll, String[] intervalCommit) {
-		List<Modification> modifications = calcModificationsInInterval(commitsAll, intervalCommit);
+		List<ChangeOnModule> changeOnModules = calcModificationsInInterval(commitsAll, intervalCommit);
 		int addLOC=0;
-		for(Modification modification: modifications){
-			addLOC += modification.calcNOAddedLines();
+		for(ChangeOnModule changeOnModule : changeOnModules){
+			addLOC += changeOnModule.calcNOAddedLines();
 		}
 		this.addLOC = addLOC;
 	}
 
 	public  void calcDelLOC(Commits commitsAll, String[] intervalCommit) {
-		List<Modification> modifications = calcModificationsInInterval(commitsAll, intervalCommit);
+		List<ChangeOnModule> changeOnModules = calcModificationsInInterval(commitsAll, intervalCommit);
 		int delLOC=0;
-		for(Modification modification: modifications){
-			delLOC += modification.calcNODeletedLines();
+		for(ChangeOnModule changeOnModule : changeOnModules){
+			delLOC += changeOnModule.calcNODeletedLines();
 		}
 		this.delLOC = delLOC;
 	}
 
 	public  void calcDevMinor(Commits commitsAll, String[] intervalCommit) {
-		List<Modification> modifications = calcModificationsInInterval(commitsAll, intervalCommit);
+		List<ChangeOnModule> changeOnModules = calcModificationsInInterval(commitsAll, intervalCommit);
 		Set<String> setAuthors = new HashSet<>();
-		modifications.stream().forEach(item->setAuthors.add(item.author));
+		changeOnModules.stream().forEach(item->setAuthors.add(item.author));
 
 		int devMinor = 0;
 		for(String author: setAuthors){
-			int count = modifications.stream().filter(item->item.author.equals(author)).collect(Collectors.toList()).size();
-			if(count/(float)modifications.size()<0.2){
+			int count = changeOnModules.stream().filter(item->item.author.equals(author)).collect(Collectors.toList()).size();
+			if(count/(float) changeOnModules.size()<0.2){
 				devMinor++;
 			}
 		}
@@ -498,14 +508,14 @@ public class Module {
 	}
 
 	public  void calcDevMajor(Commits commitsAll, String[] intervalCommit) {
-		List<Modification> modifications = calcModificationsInInterval(commitsAll, intervalCommit);
+		List<ChangeOnModule> changeOnModules = calcModificationsInInterval(commitsAll, intervalCommit);
 		Set<String> setAuthors = new HashSet<>();
-		modifications.stream().forEach(item->setAuthors.add(item.author));
+		changeOnModules.stream().forEach(item->setAuthors.add(item.author));
 
 		int devMajor = 0;
 		for(String author: setAuthors){
-			int count = modifications.stream().filter(item->item.author.equals(author)).collect(Collectors.toList()).size();
-			if(0.2<count/(float)modifications.size()){
+			int count = changeOnModules.stream().filter(item->item.author.equals(author)).collect(Collectors.toList()).size();
+			if(0.2<count/(float) changeOnModules.size()){
 				devMajor++;
 			}
 		}
@@ -513,13 +523,13 @@ public class Module {
 	}
 
 	public void calcOwnership(Commits commitsAll, String[] intervalCommit) {
-		List<Modification> modifications = calcModificationsInInterval(commitsAll, intervalCommit);
+		List<ChangeOnModule> changeOnModules = calcModificationsInInterval(commitsAll, intervalCommit);
 		Set<String> setAuthors = new HashSet<>();
-		modifications.stream().forEach(item->setAuthors.add(item.author));
+		changeOnModules.stream().forEach(item->setAuthors.add(item.author));
 
 		for(String author: setAuthors){
-			int count = modifications.stream().filter(item->item.author.equals(author)).collect(Collectors.toList()).size();
-			double ownership = count/(float)modifications.size();
+			int count = changeOnModules.stream().filter(item->item.author.equals(author)).collect(Collectors.toList()).size();
+			double ownership = count/(float) changeOnModules.size();
 			if(this.ownership<ownership){
 				this.ownership=ownership;
 			}
@@ -617,9 +627,9 @@ public class Module {
 	public  void calcPeriod(Commits commitsAll, String[] intervalCommit) {
 		int periodFrom = Integer.MAX_VALUE;
 		int periodTo   = commitsAll.get(intervalCommit[1]).date;
-		for(Modification modification: modifications.values()){
-			if(modification.date<periodFrom){
-				periodFrom = modification.date;
+		for(ChangeOnModule changeOnModule : changesOnModule.values()){
+			if(changeOnModule.date<periodFrom){
+				periodFrom = changeOnModule.date;
 			}
 		}
 		if(periodFrom<commitsAll.get(intervalCommit[0]).date){
@@ -636,14 +646,14 @@ public class Module {
 
 	public  void calcMaxInterval(Commits commitsAll, String[] intervalCommit) {
 		int maxInterval=0;
-		List<Modification> modifications = calcModificationsInInterval(commitsAll, intervalCommit);
-		modifications = modifications.stream().sorted(Comparator.comparingInt(a -> a.date)).collect(Collectors.toList());
-		if(modifications.size()<2){
+		List<ChangeOnModule> changeOnModules = calcModificationsInInterval(commitsAll, intervalCommit);
+		changeOnModules = changeOnModules.stream().sorted(Comparator.comparingInt(a -> a.date)).collect(Collectors.toList());
+		if(changeOnModules.size()<2){
 			this.maxInterval=0;
 			return;
 		}
-		for(int i=0;i<modifications.size()-1;i++){
-			int interval=modifications.get(i+1).date-modifications.get(i).date;
+		for(int i = 0; i< changeOnModules.size()-1; i++){
+			int interval= changeOnModules.get(i+1).date- changeOnModules.get(i).date;
 			if(maxInterval<interval){
 				maxInterval=interval;
 			}
@@ -653,14 +663,14 @@ public class Module {
 
 	public  void calcMinInterval(Commits commitsAll, String[] intervalCommit) {
 		int minInterval=Integer.MAX_VALUE;
-		List<Modification> modifications = calcModificationsInInterval(commitsAll, intervalCommit);
-		modifications = modifications.stream().sorted(Comparator.comparingInt(a -> a.date)).collect(Collectors.toList());
-		if(modifications.size()<2){
+		List<ChangeOnModule> changeOnModules = calcModificationsInInterval(commitsAll, intervalCommit);
+		changeOnModules = changeOnModules.stream().sorted(Comparator.comparingInt(a -> a.date)).collect(Collectors.toList());
+		if(changeOnModules.size()<2){
 			this.minInterval=0;
 			return;
 		}
-		for(int i=0;i<modifications.size()-1;i++){
-			int interval=modifications.get(i+1).date-modifications.get(i).date;
+		for(int i = 0; i< changeOnModules.size()-1; i++){
+			int interval= changeOnModules.get(i+1).date- changeOnModules.get(i).date;
 			if(interval < minInterval){
 				minInterval=interval;
 			}
@@ -671,31 +681,31 @@ public class Module {
 	public  List<Commit> calcCommitsInInterval(Commits commitsAll, String[] intervalCommit){
 		List<Commit> commits = new ArrayList<Commit>();
 
-		int dateBegin = commitsAll.get(intervalCommit[0]).date;
-		int dateEnd   = commitsAll.get(intervalCommit[1]).date;
-		for(Modification modification: modifications.values()) {
-			Commit commit = commitsAll.get(modification.idCommit);
+		Commit commitBeginning = commitsAll.get(intervalCommit[0]);
+		int dateBegin = commitBeginning.date;
+		Commit commitEnd = commitsAll.get(intervalCommit[1]);
+		int dateEnd   = commitEnd.date;
+		for(ChangeOnModule changeOnModule : changesOnModule.values()) {
+			Commit commit = commitsAll.get(changeOnModule.idCommit);
 			if(dateBegin<=commit.date & commit.date<=dateEnd & !commit.isMerge) {
 				commits.add(commit);
 			}
 		}
-
 		return commits;
 	}
 
-	public  List<Modification> calcModificationsInInterval(Commits commitsAll, String[] intervalCommit){
-		List<Modification> modificationsResult = new ArrayList<>();
+	public  List<ChangeOnModule> calcModificationsInInterval(Commits commitsAll, String[] intervalCommit){
+		List<ChangeOnModule> modificationsResult = new ArrayList<>();
 
 		int dateBegin = commitsAll.get(intervalCommit[0]).date;
 		int dateEnd   = commitsAll.get(intervalCommit[1]).date;
-		for(Modification modification: modifications.values()) {
-			Commit commit = commitsAll.get(modification.idCommit);
+		for(ChangeOnModule changeOnModule : changesOnModule.values()) {
+			Commit commit = commitsAll.get(changeOnModule.idCommit);
 			if(dateBegin<=commit.date & commit.date<=dateEnd & !commit.isMerge) {
-				modificationsResult.add(modification);
+				modificationsResult.add(changeOnModule);
 			}
 		}
-
-		return modificationsResult;
+		return  modificationsResult;
 	}
 
 	public void calcIsBuggy(Commits commitsAll, Bugs bugsAll,  String[] intervalCommit) {
@@ -707,8 +717,7 @@ public class Module {
 				Commit commitLastBugFix = commitsAll.get(intervalCommit[2]);
 				for (String idCommit : bugAtomic.idsCommitInduce) {
 					Commit commitInduce = commitsAll.get(idCommit);
-					//if (commitInduce.date < commitTimePoint.date & commitTimePoint.date < commitFix.date & commitFix.date < commitLastBugFix.date)
-					if (commitInduce.date < commitTimePoint.date & commitTimePoint.date < commitFix.date)
+					if (commitInduce.date < commitTimePoint.date & commitTimePoint.date < commitFix.date & commitFix.date < commitLastBugFix.date)
 						isBuggy = 1;
 				}
 			}
@@ -717,8 +726,8 @@ public class Module {
 
 	public Set<String> calcPaths(){
 		Set<String> paths = new HashSet<>();
-		for(Modification modification: this.modifications.values()){
-			if(!Objects.equals(modification.type, "DELETE")) paths.add(modification.pathNew);
+		for(ChangeOnModule changeOnModule : this.changesOnModule.values()){
+			if(!Objects.equals(changeOnModule.type, "DELETE")) paths.add(changeOnModule.pathNew);
 		}
 		return paths;
 	}
@@ -735,12 +744,11 @@ public class Module {
 		}
 	}
 
-	public CompilationUnit calcCompilationUnit() {
+	public void calcCompilationUnit() {
 		String sourceClass = "public class Dummy{"+this.source+"}";
-		ASTParser parser = ASTParser.newParser(AST.JLS4);
+		ASTParser parser = ASTParser.newParser(AST.JLS14);
 		parser.setSource(sourceClass.toCharArray());
-		CompilationUnit unit =(CompilationUnit) parser.createAST(new NullProgressMonitor());
-		return unit;
+		this.compilationUnit =(CompilationUnit) parser.createAST(new NullProgressMonitor());
 	}
 
 	public void loadSrcFromRepository(Repository repositoryMethod, String idCommit) throws IOException {
@@ -757,14 +765,14 @@ public class Module {
 		}
 	}
 
-	public  List<SourceCodeChange> identifyChanges(Modification modification){
+	public  List<SourceCodeChange> identifyChanges(ChangeOnModule changeOnModule){
 		String sourcePrev =  null;
 		String sourceCurrent =null;
 		String strPre = null;
 		String strPost = null;
-		if(modification.sourceOld.equals("")) {
+		if(changeOnModule.sourceOld.equals("")) {
 			String regex  = "\\n|\\r\\n";
-			String tmp=modification.sourceNew;
+			String tmp= changeOnModule.sourceNew;
 			String[] lines = tmp.split(regex, 0);
 
 			boolean inComment=false;
@@ -828,8 +836,8 @@ public class Module {
 					strPost+
 					"}";
 		}else {
-			sourcePrev= "public class Dummy{"+modification.sourceOld+"}";
-			sourceCurrent ="public class Dummy{"+modification.sourceNew+"}";
+			sourcePrev= "public class Dummy{"+ changeOnModule.sourceOld+"}";
+			sourceCurrent ="public class Dummy{"+ changeOnModule.sourceNew+"}";
 		}
 
 		FileDistiller distiller = ChangeDistiller.createFileDistiller(ChangeDistiller.Language.JAVA);

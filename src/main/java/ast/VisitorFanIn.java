@@ -104,7 +104,7 @@ public class VisitorFanIn extends ASTVisitor {
         if(iMethodBinding!=null) {
             String pathMethod = "";
             File file = new File(pathFile);
-            String regex = "(?<=repositoryFile/).+";
+            String regex = "(?<=repositoryFile_\\d/).+|(?<=repositoryFile_\\d\\d/).+|(?<=repositoryFile_\\d\\d\\d/).+";
             Pattern p = Pattern.compile(regex);
             String parent = file.getParent().replace("\\", "/");
             Matcher m = p.matcher(parent);
