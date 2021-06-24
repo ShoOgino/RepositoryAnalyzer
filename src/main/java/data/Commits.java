@@ -8,18 +8,12 @@ import com.google.common.collect.Lists;
 import me.tongfei.progressbar.ProgressBar;
 import misc.DeserializerModification;
 import org.apache.commons.collections4.keyvalue.MultiKey;
-import org.eclipse.jgit.api.Git;
-import org.eclipse.jgit.api.errors.GitAPIException;
-import org.eclipse.jgit.errors.IncorrectObjectTypeException;
-import org.eclipse.jgit.errors.MissingObjectException;
 import org.eclipse.jgit.lib.*;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.revwalk.RevWalk;
 
 import java.io.*;
 import java.util.*;
-import java.util.stream.Collectors;
-import java.util.stream.StreamSupport;
 
 import static util.FileUtil.findFiles;
 import static util.FileUtil.readFile;
@@ -27,6 +21,13 @@ import static util.FileUtil.readFile;
 @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
 public class Commits implements Map<String, Commit> {
     private final TreeMap<String, Commit> commits = new TreeMap<>();
+
+    public void completeAuthor(People people) {
+        for (Commit commit: commits.values()) {
+            commit.author=people.get(commit.author.name);
+        }
+    }
+
     public void loadCommitsFromRepository(Repository repository, String pathCommits){
         List<RevCommit> commitsAll = new ArrayList<RevCommit>();
         Collection<Ref> allRefs = repository.getAllRefs().values();
@@ -60,15 +61,22 @@ public class Commits implements Map<String, Commit> {
         }
     }
 
-
-    public void saveToFile(String pathCommits){
-        File dir = new File(pathCommits);
-        dir.mkdirs();
-        for(Entry<String, Commit> entry : ProgressBar.wrap(commits.entrySet(), "saveCommits")) {
-            entry.getValue().save(pathCommits+"/"+entry.getKey()+".json");
+    public void loadCommitsFromFile(String pathCommits) {
+        List<String> paths = findFiles(pathCommits, "json");
+        for(String path: ProgressBar.wrap(paths, "loadCommitsFromFile")) {
+            try {
+                String strFile = readFile(path);
+                ObjectMapper mapper = new ObjectMapper();
+                SimpleModule simpleModule = new SimpleModule();
+                simpleModule.addKeyDeserializer(MultiKey.class, new DeserializerModification());
+                mapper.registerModule(simpleModule);
+                Commit commit = mapper.readValue(strFile, new TypeReference<Commit>() {});
+                commits.put(commit.id, commit);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
         }
     }
-
 
     @Override
     public int size() {
@@ -140,20 +148,4 @@ public class Commits implements Map<String, Commit> {
         return commits.hashCode();
     }
 
-    public void loadCommitsFromFile(String pathCommits) {
-        List<String> paths = findFiles(pathCommits, "json");
-        for(String path: ProgressBar.wrap(paths, "loadCommitsFromFile")) {
-            try {
-                String strFile = readFile(path);
-                ObjectMapper mapper = new ObjectMapper();
-                SimpleModule simpleModule = new SimpleModule();
-                simpleModule.addKeyDeserializer(MultiKey.class, new DeserializerModification());
-                mapper.registerModule(simpleModule);
-                Commit commit = mapper.readValue(strFile, new TypeReference<Commit>() {});
-                commits.put(commit.id, commit);
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-    }
 }

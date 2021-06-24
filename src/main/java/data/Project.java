@@ -1,7 +1,6 @@
 package data;
 
 import misc.Setting;
-import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.storage.file.FileRepositoryBuilder;
 
@@ -14,6 +13,7 @@ public class Project {
     public Commits commitsAll  = new Commits();
 	public Modules modulesAll = new Modules();
 	public Bugs bugsAll = new Bugs();
+	public People authorsAll = new People();
 
 	public Project(Setting setting){
 		try {
@@ -21,8 +21,11 @@ public class Project {
 			repositoryMethod = new FileRepositoryBuilder().setGitDir(new File(setting.pathRepositoryMethod + "/.git")).build();
 		    commitsAll.loadCommitsFromRepository(repositoryMethod, setting.pathCommits);
 		    commitsAll.loadCommitsFromFile(setting.pathCommits);
-		    modulesAll.analyzeModules(commitsAll);
-		    modulesAll.saveToFile(setting.pathModules);
+		    authorsAll.analyze(commitsAll);
+		    authorsAll.giveNumberToPerson();
+		    commitsAll.completeAuthor(authorsAll);
+		    modulesAll.analyzeAllModules(commitsAll);
+		    modulesAll.saveAsJson(setting.pathModules);
 		    bugsAll.loadBugsFromFile(setting.pathBugs);
 		}catch (IOException exception){
 			exception.printStackTrace();

@@ -5,12 +5,9 @@ import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.storage.file.FileRepositoryBuilder;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.TestInstance;
-import util.FileUtil;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.Arrays;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -43,13 +40,13 @@ public class TestModule {
 
         commitsAll.loadCommitsFromRepository(repositoryMethod, idCommitHead, pathCommits);
         commitsAll.loadCommitsFromFile(pathCommits);
-        modulesAll.analyzeModules(commitsAll);
+        modulesAll.analyzeAllModules(commitsAll);
         bugsAll.loadBugsFromFile(pathBugs);
         String pathDataset = pathProject + "/datasets/" + "test" + ".csv";
         //個々のモジュールについてメトリクスを計測
         modulesTarget.identifyTargetModules(modulesAll, repositoryMethod, commitEdgesMethod);
-        modulesTarget.calcCodeMetrics(repositoryFile, commitEdgesFile, repositoryMethod, commitEdgesMethod);
-        modulesTarget.calcProcessMetrics(modulesAll, commitsAll, bugsAll, commitEdgesMethod);
+        modulesTarget.calculateCodeMetrics(repositoryFile, commitEdgesFile, repositoryMethod, commitEdgesMethod);
+        modulesTarget.calculateProcessMetrics(modulesAll, commitsAll, bugsAll, commitEdgesMethod);
         modulesTarget.saveMetricsAsRecords(pathDataset);
     }
 

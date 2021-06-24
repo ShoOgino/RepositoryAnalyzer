@@ -5,7 +5,7 @@ import org.eclipse.jdt.core.dom.*;
 import java.util.ArrayList;
 import java.util.HashMap;
 
-public class RequestorFanIn extends FileASTRequestor {
+public class RequesterFanIn extends FileASTRequestor {
     private final HashMap<String, Module> modules;
     public ArrayList<String> methodsCalled = new ArrayList<>();
 
@@ -16,7 +16,7 @@ public class RequestorFanIn extends FileASTRequestor {
         ast.accept(visitorFanIn);
         methodsCalled.addAll(visitorFanIn.methodsCalled);
     }
-    public RequestorFanIn(HashMap<String, Module> modules){
+    public RequesterFanIn(HashMap<String, Module> modules){
         this.modules=modules;
     }
 }

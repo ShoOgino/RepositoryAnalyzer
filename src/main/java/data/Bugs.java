@@ -75,6 +75,17 @@ public class Bugs implements Map<String, Bug>{
         return bugAtomicsIdentified;
     }
 
+    public boolean calculateIsFix(String idCommit){
+        for(Bug bug: bugs.values()){
+            for(BugAtomic bugAtomic: bug.bugAtomics){
+                if(bugAtomic.idCommitFix.equals(idCommit)){
+                    return true;
+                }
+            }
+        }
+        return  false;
+    }
+
     public List<Bug> identifyBug(String path) {
         List<Bug> bugsIdentified =new ArrayList<>();
         for(Bug bug: bugs.values()){

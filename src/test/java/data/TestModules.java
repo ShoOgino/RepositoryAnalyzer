@@ -1,6 +1,5 @@
 package data;
 
-import com.google.common.base.Objects;
 import me.tongfei.progressbar.ProgressBar;
 import org.eclipse.jgit.api.errors.GitAPIException;
 import org.junit.jupiter.api.BeforeAll;
@@ -8,6 +7,7 @@ import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
@@ -32,6 +32,101 @@ public class TestModules {
 
     @BeforeAll
     static public void setUp() throws GitAPIException, IOException {
+    }
+    private void check() {
+        for(Module module: ProgressBar.wrap(modules.values(),"check")) {
+            boolean hasAddOrRenameOrCopy = false;
+            for(ChangeOnModule changeOnModule : module.changesOnModule.values()) {
+                if(java.util.Objects.equals(changeOnModule.type, "ADD")
+                        | java.util.Objects.equals(changeOnModule.type, "RENAME")
+                        | java.util.Objects.equals(changeOnModule.type, "COPY")){
+                    hasAddOrRenameOrCopy=true;
+                }
+            }
+            if (hasAddOrRenameOrCopy) continue;
+            else System.out.println(module.path);
+        }
+    }
+
+    public void checkParent(){
+        int countAll = 0;
+        int countYabai =0;
+        int count = 0;
+        for(Module module: ProgressBar.wrap(modules.values(), "testIdentifyParents")){
+            for(ChangeOnModule changeOnModule : module.changesOnModule.values()){
+                if(changeOnModule.type.equals("ADD"))continue;;
+                countAll++;
+                if(changeOnModule.parents.size()==0){
+                    System.out.println(module.path);
+                    System.out.println(changeOnModule.idCommit);
+                    if(java.util.Objects.equals(changeOnModule.type, "RENAME") | java.util.Objects.equals(changeOnModule.type, "COPY")) countYabai++;
+                    count++;
+                    continue;
+                }
+                boolean isParentOk = true;
+                for(ChangeOnModule changeOnModuleParent : changeOnModule.parentsModification.values()){
+                    if(!java.util.Objects.equals(changeOnModule.sourceOld, changeOnModuleParent.sourceNew)){
+                        isParentOk=false;
+                        break;
+                    }
+                }
+                if(isParentOk)continue;
+                count++;
+                if(java.util.Objects.equals(changeOnModule.type, "RENAME") | java.util.Objects.equals(changeOnModule.type, "COPY")) countYabai++;
+                System.out.println(module.path);
+                System.out.println(changeOnModule.idCommit);
+                System.out.println(changeOnModule.sourceOld);
+                for(ChangeOnModule changeOnModuleBefore : changeOnModule.parentsModification.values()) {
+                    System.out.println(changeOnModuleBefore.idCommit);
+                    System.out.println(changeOnModuleBefore.sourceNew);
+                }
+            }
+        }
+        System.out.println(countAll);
+        System.out.println(countYabai);
+        System.out.println(count);
+    }
+
+
+    public void checkChildren(){
+        int countAll = 0;
+        int countYabai =0;
+        int count = 0;
+        for(Module module: ProgressBar.wrap(modules.values(), "testIdentifyChildlen")){
+            for(ChangeOnModule changeOnModule : module.changesOnModule.values()){
+                if(changeOnModule.type.equals("DELETE"))continue;;
+                countAll++;
+                /*
+                if(modification.children.size()==0){
+                    System.out.println(module.path);
+                    System.out.println(modification.idCommit);
+                    if(Objects.equals(modification.type, "RENAME") | Objects.equals(modification.type, "COPY")) countYabai++;
+                    count++;
+                    continue;
+                }
+                 */
+                boolean isChildOK = true;
+                for(ChangeOnModule child: changeOnModule.childrenModification.values()){
+                    if(!java.util.Objects.equals(changeOnModule.sourceNew, child.sourceOld)){
+                        isChildOK=false;
+                        break;
+                    }
+                }
+                if(isChildOK)continue;
+                count++;
+                if(java.util.Objects.equals(changeOnModule.type, "RENAME") | Objects.equals(changeOnModule.type, "COPY")) countYabai++;
+                System.out.println(module.path);
+                System.out.println(changeOnModule.idCommit);
+                System.out.println(changeOnModule.sourceNew);
+                for(ChangeOnModule changeOnModuleAfter : changeOnModule.childrenModification.values()) {
+                    System.out.println(changeOnModuleAfter.idCommit);
+                    System.out.println(changeOnModuleAfter.sourceOld);
+                }
+            }
+        }
+        System.out.println(countAll);
+        System.out.println(countYabai);
+        System.out.println(count);
     }
 
     @Test

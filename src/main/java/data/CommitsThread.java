@@ -1,6 +1,5 @@
 package data;
 
-import lombok.SneakyThrows;
 import me.tongfei.progressbar.ProgressBar;
 import org.eclipse.jgit.diff.*;
 import org.eclipse.jgit.lib.*;
@@ -24,58 +23,61 @@ public class CommitsThread  extends Thread{
         this.pathCommits = pathCommits;
     }
 
-    @SneakyThrows
     public void run() {
-        System.out.println("thread started");
-        //それぞれのコミットについて、変更内容を取得する。
-        for (RevCommit revCommit : ProgressBar.wrap(revcommits, "loadCommitsFromRepository")) {
-            Commit commit = new Commit();
-            commit.id = revCommit.getName();
-            commit.date = revCommit.getCommitTime();
-            commit.author = revCommit.getAuthorIdent().getName();
-            commit.isMerge = revCommit.getParentCount() > 1;
-            commit.idParentMaster = revCommit.getParentCount() == 0 ? "0000000000000000000000000000000000000000" : revCommit.getParent(0).getName();
-            if(revCommit.getParentCount()==0){
-                ChangesOnModule changesOnModule = calcModificationsBetweenCommits(repository, revCommit, null);
-                commit.idParent2Modifications.put("0000000000000000000000000000000000000000", changesOnModule);
-            }else {
-                for (RevCommit revCommitParent : revCommit.getParents()) {
-                    ChangesOnModule changesOnModule = calcModificationsBetweenCommits(repository, revCommit, revCommitParent);
-                    commit.idParent2Modifications.put(revCommitParent.getName(), changesOnModule);
+        try {
+            System.out.println("thread started");
+            //それぞれのコミットについて、変更内容を取得する。
+            for (RevCommit revCommit : ProgressBar.wrap(revcommits, "loadCommitsFromRepository")) {
+                Commit commit = new Commit();
+                commit.id = revCommit.getName();
+                commit.date = revCommit.getCommitTime();
+                commit.author = new Person(revCommit.getAuthorIdent().getName());
+                commit.isMerge = revCommit.getParentCount() > 1;
+                commit.idParentMaster = revCommit.getParentCount() == 0 ? "0000000000000000000000000000000000000000" : revCommit.getParent(0).getName();
+                if (revCommit.getParentCount() == 0) {
+                    ChangesOnModule changesOnModule = calcChangeOnModulesBetweenCommits(repository, revCommit, null);
+                    commit.idParent2Modifications.put("0000000000000000000000000000000000000000", changesOnModule);
+                } else {
+                    for (RevCommit revCommitParent : revCommit.getParents()) {
+                        ChangesOnModule changesOnModule = calcChangeOnModulesBetweenCommits(repository, revCommit, revCommitParent);
+                        commit.idParent2Modifications.put(revCommitParent.getName(), changesOnModule);
+                    }
                 }
-            }
-            for (RevCommit revCommitParentSub : revCommit.getParents()) {
-                if(Objects.equals(revCommitParentSub.getName(), commit.idParentMaster))continue;
-                ChangesOnModule changesOnModuleSub = commit.idParent2Modifications.get(revCommitParentSub.getName());
-                ChangesOnModule changesOnModuleMain = commit.idParent2Modifications.get(commit.idParentMaster);
-                List<String> pathsMain = changesOnModuleMain.values().stream().map(a->a.pathNew).collect(Collectors.toList());
-                changesOnModuleSub.entrySet().removeIf(entry -> !pathsMain.contains(entry.getKey().getKey(3)));
-                for (ChangeOnModule changeOnModule : changesOnModuleMain.values()) {
-                    if(0 == changesOnModuleSub.findFromPathNew(changeOnModule.pathNew).size()){
-                        if (!changeOnModule.type.equals("DELETE")) {
-                            ChangeOnModule m = new ChangeOnModule();
-                            m.idCommit = revCommit.getName();
-                            m.idCommitParent = revCommitParentSub.getName();
-                            m.date = revCommit.getCommitTime();
-                            m.author = revCommit.getAuthorIdent().getName();
-                            m.isMerge = revCommit.getParentCount() > 1;
-                            m.type = "UNCHANGE";
-                            m.pathOld = changeOnModule.pathNew;
-                            m.pathNew = changeOnModule.pathNew;
-                            m.sourceOld = changeOnModule.sourceNew;
-                            m.sourceNew = changeOnModule.sourceNew;
-                            m.pathNewParent = changeOnModule.pathNew;
-                            changesOnModuleSub.put(m.idCommitParent, m.idCommit, m.pathOld, m.pathNew, m);
+                for (RevCommit revCommitParentSub : revCommit.getParents()) {
+                    if (Objects.equals(revCommitParentSub.getName(), commit.idParentMaster)) continue;
+                    ChangesOnModule changesOnModuleSub = commit.idParent2Modifications.get(revCommitParentSub.getName());
+                    ChangesOnModule changesOnModuleMain = commit.idParent2Modifications.get(commit.idParentMaster);
+                    List<String> pathsMain = changesOnModuleMain.values().stream().map(a -> a.pathNew).collect(Collectors.toList());
+                    changesOnModuleSub.entrySet().removeIf(entry -> !pathsMain.contains(entry.getKey().getKey(3)));
+                    for (ChangeOnModule changeOnModule : changesOnModuleMain.values()) {
+                        if (0 == changesOnModuleSub.findFromPathNew(changeOnModule.pathNew).size()) {
+                            if (!changeOnModule.type.equals("DELETE")) {
+                                ChangeOnModule m = new ChangeOnModule();
+                                m.idCommit = revCommit.getName();
+                                m.idCommitParent = revCommitParentSub.getName();
+                                m.date = revCommit.getCommitTime();
+                                m.author = new Person(revCommit.getAuthorIdent().getName());
+                                m.isMerge = revCommit.getParentCount() > 1;
+                                m.type = "UNCHANGE";
+                                m.pathOld = changeOnModule.pathNew;
+                                m.pathNew = changeOnModule.pathNew;
+                                m.sourceOld = changeOnModule.sourceNew;
+                                m.sourceNew = changeOnModule.sourceNew;
+                                m.pathNewParent = changeOnModule.pathNew;
+                                changesOnModuleSub.put(m.idCommitParent, m.idCommit, m.pathOld, m.pathNew, m);
+                            }
                         }
                     }
                 }
+                commit.save(pathCommits + "/" + commit.id + ".json", "CommitsAll");
             }
-        commit.save(pathCommits+"/"+commit.id+".json");
+            System.out.println("thread ends");
+        }catch (Exception exception){
+            exception.printStackTrace();
         }
-        System.out.println("thread ends");
     }
 
-    public ChangesOnModule calcModificationsBetweenCommits(Repository repository, RevCommit revCommit, RevCommit revCommitParent) throws IOException {
+    public ChangesOnModule calcChangeOnModulesBetweenCommits(Repository repository, RevCommit revCommit, RevCommit revCommitParent) throws IOException {
         ChangesOnModule changesOnModule = new ChangesOnModule();
         try(DiffFormatter diffFormatter = new DiffFormatter(System.out)) {
             diffFormatter.setRepository(repository);
@@ -95,7 +97,7 @@ public class CommitsThread  extends Thread{
                 changeOnModule.idCommit = revCommit.getName();
                 changeOnModule.idCommitParent = revCommitParent == null ? "0000000000000000000000000000000000000000" : revCommitParent.getName();
                 changeOnModule.date = revCommit.getCommitTime();
-                changeOnModule.author = revCommit.getAuthorIdent().getName();
+                changeOnModule.author = new Person(revCommit.getAuthorIdent().getName());
                 changeOnModule.isMerge = revCommit.getParentCount() > 1;
                 changeOnModule.type = diffEntry.getChangeType().toString();
 
@@ -132,7 +134,7 @@ public class CommitsThread  extends Thread{
                 changesOnModule.put(changeOnModule.idCommitParent, changeOnModule.idCommit, changeOnModule.pathOld, changeOnModule.pathNew, changeOnModule);
             }
         }catch (IOException e) {
-            // ハンドラに処理を移す
+            e.printStackTrace();
         }
         return changesOnModule;
     }

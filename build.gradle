@@ -14,6 +14,7 @@ version '1.0.0'
 repositories {
     mavenLocal()
     mavenCentral()
+
 }
 
 dependencies {
@@ -36,12 +37,22 @@ dependencies {
     testCompileOnly group: 'org.projectlombok', name: 'lombok', version: '1.18.20'
     annotationProcessor group: 'org.projectlombok', name: 'lombok', version: '1.18.20'
     testAnnotationProcessor group: 'org.projectlombok', name: 'lombok', version: '1.18.20'
-    //implementation group: '', name: '', version: ''
     implementation files('lib/changedistiller-0.0.1-SNAPSHOT.jar')
     //implementation group: 'org.eclipse.jgit', name: 'org.eclipse.jgit', version: '5.10.0-SNAPSHOT'
     implementation group: 'org.eclipse.jgit', name: 'org.eclipse.jgit', version: '5.11.0.202103091610-r'
     implementation group: 'commons-io', name: 'commons-io', version: '2.9.0'
+    //gumtree
+
+    //implementation 'com.github.gumtreediff:core:3.0.0-beta2'
+    //implementation 'com.github.gumtreediff:gen.antlr3:3.0.0-beta2'
+    //implementation 'com.github.gumtreediff:gen.antlr3-xml:3.0.0-beta2'
+
+    implementation files('lib/core-2.1.3-SNAPSHOT.jar')
+    implementation files('lib/gen.jdt-2.1.3-SNAPSHOT.jar')
+    implementation files('lib/gen.javaparser-2.1.3-SNAPSHOT.jar')
+    implementation files('lib/simmetrics-core-3.2.3.jar')
 }
+
 test {
     useJUnitPlatform()
 }
